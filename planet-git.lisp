@@ -9,6 +9,7 @@
 (require :hunchentoot)
 (require :cl-who)
 (require :postmodern)
+(require :cl-ppcre)
 
 ;;; Database
 (defclass login ()
@@ -51,22 +52,41 @@
 ;;; Validation
 
 
-(defmacro validate-length ((&key fieldname))
-  `(let ((name ,fieldname))
-     (if (= (length (hunchentoot:parameter name)) 0)
-       "Error, fieldname is required" (hunchentoot:parameter 'fullname))))
-;    (setf (gethash ,fieldname errors) "Error, fieldname is required")))
+(defun validate-length (fieldname)
+     (if (= (length (hunchentoot:parameter fieldname)) 0)
+       (concatenate 'string "Error, " fieldname " is required")))
 
-(defun validate-registration (errors)
-  (let ((validation-error (validate-length (:fieldname "fullname"))))
-    (unless (= (length validation-error) 0)
-	(setf (gethash 'fullname errors) validation-error)
-    ))
-  (let ((validation-error (validate-length (:fieldname "username"))))
-    (unless (= (length validation-error) 0)
-	(setf (gethash 'username errors) validation-error)
-    ))
-)
+(defun validate-username (fieldname)
+  (if (car (list (cl-ppcre:scan "[^a-zA-Z]" (hunchentoot:parameter fieldname))))
+       (concatenate 'string "Error, " fieldname " can only contain alpha characters.")))
+
+(defmacro validate-field (fieldname errors &rest validators)
+    `(let ((lname ,fieldname)
+	    (lerrors ,errors))
+       (loop for x in (list ,@validators)
+	  until (gethash lname lerrors)
+	  do (let ((validation-error (funcall x (string-downcase (string lname)))))
+	       (unless (= (length validation-error) 0)
+		 (setf (gethash lname lerrors) validation-error)
+		 )))))
+
+(defun validate-registration ()
+  (let ((errors (make-hash-table)))
+    (if (eq (hunchentoot:request-method*) :post)
+	(progn 
+	  (validate-field 'fullname errors #'validate-length)
+	  (validate-field 'username errors #'validate-length #'validate-username)))
+    errors
+))
+
+(defun validate-login ()
+  (let ((errors (make-hash-table)))
+    (if (eq (hunchentoot:request-method*) :post)
+	(progn 
+	  (validate-field 'username errors #'validate-length)
+	  (validate-field 'password errors #'validate-length)))
+    errors
+))
 
 
 ;;; View          
@@ -107,9 +127,9 @@
      (username :parameter-type 'string :request-type :post)
      (password :parameter-type 'string :request-type :post)
      (email :parameter-type 'string :request-type :post))
-  (let ((errors (make-hash-table)))
-    (validate-registration errors)
-    (if (= (hash-table-count errors) 0)
+  (let ((errors (validate-registration)))
+    (if (and (= (hash-table-count errors) 0) 
+	     (eq (hunchentoot:request-method*) :post))
 	(progn 
 	  (postmodern:insert-dao 
 	   (make-instance 'email

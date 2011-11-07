@@ -1,6 +1,6 @@
 (ql:quickload 'swank)
 (ql:quickload 'planet-git)
-(require :planet-git)
+
 ;; define some parameters for easier update
 (defparameter *httpd-port* 8000)     ; The port Hunchentoot will be listening on
 (defparameter *shutdown-port* 6200)  ; The port SBCL will be listening for shutdown
