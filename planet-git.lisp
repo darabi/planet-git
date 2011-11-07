@@ -176,7 +176,7 @@
 
 
 (hunchentoot:define-easy-handler
-    (register-page :uri "/repository/new") 
+    (repository-page :uri "/repository/new") 
     ((name :parameter-type 'string))
   (if name
       (progn 
