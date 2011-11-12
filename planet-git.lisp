@@ -11,6 +11,12 @@
 (require :postmodern)
 (require :cl-ppcre)
 
+
+;;; Global Config
+
+(defparameter *repository-directory* #p"/home/russell/tmp/planet-git/")
+
+
 ;;; Database
 (defclass login ()
   ((id :col-type serial :accessor id)
@@ -32,8 +38,9 @@
 
 (defclass repository ()
   ((id :col-type serial :accessor id)
-   (owner-id :col-type integer :accessor owner-id)
+   (owner-id :col-type integer :initarg :owner-id)
    (name :col-type string :initarg :name)
+   (path :col-type string :initarg :path)
    )
   (:metaclass postmodern:dao-class)
   (:keys id))
@@ -73,7 +80,7 @@
 (defun validate-registration ()
   (let ((errors (make-hash-table)))
     (if (eq (hunchentoot:request-method*) :post)
-	(progn 
+	(progn
 	  (validate-field 'fullname errors #'validate-length)
 	  (validate-field 'username errors #'validate-length #'validate-username)))
     errors
@@ -82,14 +89,22 @@
 (defun validate-login ()
   (let ((errors (make-hash-table)))
     (if (eq (hunchentoot:request-method*) :post)
-	(progn 
-	  (validate-field 'username errors #'validate-length)
+	(progn
+	  (validate-field 'login errors #'validate-length)
 	  (validate-field 'password errors #'validate-length)))
     errors
 ))
 
+(defun validate-newrepository ()
+  (let ((errors (make-hash-table)))
+    (if (eq (hunchentoot:request-method*) :post)
+	(progn
+	  (validate-field 'name errors #'validate-length))
+    errors
+)))
 
-;;; View          
+
+;;; View
 
 ;(setf hunchentoot:*dispatch-table*
 ;      (list #'hunchentoot:dispatch-easy-handlers))
@@ -98,42 +113,46 @@
 (defmacro standard-page ((&key title) &body body)
   `(cl-who:with-html-output-to-string (*standard-output* nil :prologue t :indent t)
      (:html :xmlns "http://www.w3.org/1999/xhtml"
-	    :xml\:lang "en" 
+	    :xml\:lang "en"
 	    :lang "en"
-	    (:head 
-	     (:meta :http-equiv "Content-Type" 
+	    (:head
+	     (:meta :http-equiv "Content-Type"
 		    :content    "text/html;charset=utf-8")
 	     (:title "Planet Git - " ,title))
-	    (:body 
+	    (:body
 	     (:div :id "header"
 		   (:h1 "Planet Git")
-		   (:span :class "tagline" 
+		   (:span :class "tagline"
 			  "a bad clone of github"))
+	     (if (login-p)
+		 (cl-who:htm
+		  (:div :id "personalbar"
+			(:a :href "/logout" "Logout"))))
 	     ,@body))))
 
 
-(hunchentoot:define-easy-handler 
-    (home-page :uri "/") ()  
+(hunchentoot:define-easy-handler
+    (home-page :uri "/") ()
  (standard-page (:title "Home")
-    (:a :href "/register" "register")
-    (:a :href "/login" "login")
-    (:a :href "/repository/new" "new repository")
+    (unless (login-p) (cl-who:htm  (:a :href "/register" "register")))
+    (unless (login-p) (cl-who:htm (:a :href "/login" "login")))
+    (if (login-p) (cl-who:htm (:a :href "/repository/new" "new repository")))
     ))
 
 
 (hunchentoot:define-easy-handler
-    (register-page :uri "/register") 
+    (register-page :uri "/register")
     ((fullname :parameter-type 'string :request-type :post)
      (username :parameter-type 'string :request-type :post)
      (password :parameter-type 'string :request-type :post)
      (email :parameter-type 'string :request-type :post))
   (let ((errors (validate-registration)))
-    (if (and (= (hash-table-count errors) 0) 
+    (if (and (= (hash-table-count errors) 0)
 	     (eq (hunchentoot:request-method*) :post))
-	(progn 
-	  (postmodern:insert-dao 
+	(progn
+	  (postmodern:insert-dao
 	   (make-instance 'email
-			  :user-id (postmodern:insert-dao 
+			  :user-id (postmodern:insert-dao
 				    (make-instance 'login
 						   :fullname fullname
 						   :username username
@@ -143,7 +162,7 @@
 	  (hunchentoot:redirect "/"))
 	(standard-page (:title "Register")
 	  (:h1 "Register")
-	  (:form :action "" :method "post" 
+	  (:form :action "" :method "post"
 		 (:ul
 		  (:li "Fullname" (:input :type "text" :name "fullname" :value fullname)
 		       (cl-who:str (gethash 'fullname errors)))
@@ -156,39 +175,111 @@
 	  ))))
 
 
+(defun compare-password-hash (passwordhash password)
+  (if (string= passwordhash password)
+      T
+      nil))
+
+
+(defun verify-password (login password)
+  (let* ((user (car (postmodern:query
+	       (:select 'login.id 'login.password
+			:from 'login
+			:left-join 'email :on (:= 'login.id 'email.user-id)
+			:where (:or (:= 'login.username login) (:= 'email.email login))))))
+	 (user-id (car user))
+	 (user-passwd (car (cdr user))))
+    (if (compare-password-hash user-passwd password)
+	user-id
+	nil)))
+
+
+(defun login-session (login password)
+  "log a user out of a session"
+  (let ((user-id (verify-password login password)))
+    (if user-id
+      (let ((session (hunchentoot:start-session))
+	    (user (postmodern:get-dao 'login user-id)))
+	(setf (hunchentoot:session-value 'user session) user)
+	)
+      nil
+      )))
+
+
+(defun logout-session ()
+  "remove the user from the current session-login"
+  (hunchentoot:delete-session-value 'user))
+
+
+(defun login-p ()
+  (hunchentoot:session-value 'user))
+
+
 (hunchentoot:define-easy-handler
-    (register-page :uri "/login") 
-    ((login :parameter-type 'string) 
-     (password :parameter-type 'string))
-  (if login
-      (progn 
-	(hunchentoot:redirect "/"))
+    (login-page :uri "/login")
+    ((login :parameter-type 'string :request-type :post)
+     (password :parameter-type 'string :request-type :post))
+  (let ((errors (validate-login)))
+
+    (if (and (= (hash-table-count errors) 0)
+	     (eq (hunchentoot:request-method*) :post))
+	(progn
+	  (if (login-session login password)
+	      (hunchentoot:redirect "/")))
       (cl-who:with-html-output-to-string (*standard-output* nil :prologue t)
-	(:html 
+	(:html
 	 (:body
-	  (:h1 "Register")
-	  (:form :action "" :method "post" 
+	  (:h1 "Login")
+	  (:form :action "" :method "post"
+		 (if (> (hash-table-count errors) 0)
+		     (cl-who:htm
+		      (:span "Error detected on the page")))
 		 (:ul
-		  (:li "username or email" (:input :type "text" :name "fullname"))
-		  (:li "password" (:input :type "text" :name "password"))
-		  (:li (:input :type "submit" :name "login"))))
-	  )))))
+		  (:li "username or email" (:input :type "text" :name "login" :value login)
+		       (cl-who:str (gethash 'login errors)))
+		  (:li "password" (:input :type "text" :name "password")
+		       (cl-who:str (gethash 'password errors)))
+		  (:li (:input :type "submit" :name "submit"))))
+	  ))))))
 
 
 (hunchentoot:define-easy-handler
-    (repository-page :uri "/repository/new") 
+    (logout-page :uri "/logout") ()
+  (logout-session)
+  (hunchentoot:redirect "/"))
+
+
+(defun create-repository (name owner)
+  (let* ((username  (slot-value owner 'username))
+	 (relative-path (make-pathname :directory
+					       (list ':relative
+						     (string username)
+						     (string name))))
+	 (path (merge-pathnames relative-path
+			       *repository-directory*)))
+    (princ path)
+    (ensure-directories-exist path)
+    (postmodern:insert-dao
+     (make-instance 'repository
+		    :owner-id (slot-value owner 'id)
+		    :name name
+		    :path (namestring relative-path)))
+    (cl-git:ensure-git-repository-exist path)
+
+))
+
+(hunchentoot:define-easy-handler
+    (repository-page :uri "/repository/new")
     ((name :parameter-type 'string))
   (if name
-      (progn 
-	(postmodern:insert-dao 
-	 (make-instance 'repository
-			:name name))
+      (progn
+	(create-repository name (login-p))
 	(hunchentoot:redirect "/"))
       (cl-who:with-html-output-to-string (*standard-output* nil :prologue t)
-	(:html 
+	(:html
 	 (:body
 	  (:h1 "New Repository")
-	  (:form :action "" :method "post" 
+	  (:form :action "" :method "post"
 		 (:ul
 		  (:li "Name" (:input :type "text" :name "name"))
 		  (:li (:input :type "submit" :name "submit"))))

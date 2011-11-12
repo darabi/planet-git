@@ -4,8 +4,10 @@
   :serial t
   :depends-on (#:hunchentoot
                #:cl-who
+               #:cl-git
                #:postmodern
-	       #:cl-ppcre)
+	       #:cl-ppcre
+	       #:cl-fad)
   :components ((:file "package")
                (:file "planet-git")))
 
