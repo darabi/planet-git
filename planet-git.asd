@@ -7,7 +7,9 @@
                #:cl-git
                #:postmodern
 	       #:cl-ppcre
-	       #:cl-fad)
+	       #:cl-fad
+	       #:css-lite
+	       #:parenscript
+	       #:md5)
   :components ((:file "package")
                (:file "planet-git")))
-
