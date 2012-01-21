@@ -75,48 +75,52 @@
 
 
 (defun validate-length (fieldname)
-     (if (= (length (hunchentoot:parameter fieldname)) 0)
-       (concatenate 'string "Error, " fieldname " is required")))
+  (when (= (length (hunchentoot:parameter fieldname)) 0)
+    (concatenate 'string "Error, " fieldname " is required")))
 
 (defun validate-username (fieldname)
-  (if (car (list (cl-ppcre:scan "[^a-zA-Z]" (hunchentoot:parameter fieldname))))
-       (concatenate 'string "Error, " fieldname " can only contain alpha characters.")))
+  (when (car (list (cl-ppcre:scan "[^a-zA-Z]" (hunchentoot:parameter fieldname))))
+    (concatenate 'string "Error, " fieldname " can only contain alpha characters.")))
+
+(defun validate-email (fieldname)
+  (when (car (list (cl-ppcre:scan "^[^@]+@[^@]+\\.[^@]+$" (hunchentoot:parameter fieldname))))
+    (concatenate 'string "Error, " fieldname " is not a valid email address.")))
+
+;; FIXME (russell) this still doesn't work
+(defun validate-password (fieldname)
+  (when (equal (hunchentoot:parameter fieldname) (hunchentoot:parameter "password"))
+    (concatenate 'string "Error, " fieldname " doesn't match password.")))
 
 (defmacro validate-field (fieldname errors &rest validators)
-    `(let ((lname ,fieldname)
-	    (lerrors ,errors))
-       (loop for x in (list ,@validators)
-	  until (gethash lname lerrors)
-	  do (let ((validation-error (funcall x (string-downcase (string lname)))))
-	       (unless (= (length validation-error) 0)
-		 (setf (gethash lname lerrors) validation-error)
-		 )))))
+  `(let ((lname ,fieldname)
+	 (lerrors ,errors))
+     (loop for x in (list ,@validators)
+	   until (gethash lname lerrors)
+	   do (let ((validation-error (funcall x (string-downcase (string lname)))))
+		(unless (= (length validation-error) 0)
+		  (setf (gethash lname lerrors) validation-error))))))
 
-(defun validate-registration ()
-  (let ((errors (make-hash-table)))
-    (if (eq (hunchentoot:request-method*) :post)
-	(progn
-	  (validate-field 'fullname errors #'validate-length)
-	  (validate-field 'username errors #'validate-length #'validate-username)))
-    errors
-))
+(defmacro def-validator (name () &body body)
+  `(defun ,name ()
+     (let ((errors (make-hash-table)))
+       (if (eq (hunchentoot:request-method*) :post)
+	   (progn
+	     ,@body))
+       errors)))
 
-(defun validate-login ()
-  (let ((errors (make-hash-table)))
-    (if (eq (hunchentoot:request-method*) :post)
-	(progn
-	  (validate-field 'login errors #'validate-length)
-	  (validate-field 'password errors #'validate-length)))
-    errors
-))
+(def-validator validate-registration ()
+  (validate-field 'fullname errors #'validate-length)
+  (validate-field 'username errors #'validate-length #'validate-username)
+  (validate-field 'email errors #'validate-length #'validate-email)
+  (validate-field 'password errors #'validate-length)
+  (validate-field 'cpassword errors #'validate-password))
 
-(defun validate-newrepository ()
-  (let ((errors (make-hash-table)))
-    (if (eq (hunchentoot:request-method*) :post)
-	(progn
-	  (validate-field 'name errors #'validate-length))
-    errors
-)))
+(def-validator validate-login ()
+  (validate-field 'login errors #'validate-length)
+  (validate-field 'password errors #'validate-length))
+
+(def-validator validate-newrepository ()
+  (validate-field 'name errors #'validate-length))
 
 ;;; Path
 
@@ -422,17 +426,26 @@
 			  :rank 0))
 	  (hunchentoot:redirect "/"))
 	(render-standard-page (:title "Register")
-	  (:h1 "Register")
 	  (:form :action "" :method "post"
-		 (:ul
-		  (:li "Fullname" (:input :type "text" :name "fullname" :value fullname)
-		       (cl-who:str (gethash 'fullname errors)))
-		  (:li "Username" (:input :type "text" :name "username" :value username)
-		       (cl-who:str (gethash 'username errors)))
-		  (:li "Email" (:input :type "text" :name "email" :value email))
-		  (:li "password" (:input :type "text" :name "password"))
-		  (:li "confirm passwd" (:input :type "text" :name "cpassword"))
-		  (:li (:input :type "submit" :name "register"))))
+		 (if (> (hash-table-count errors) 0)
+		     (cl-who:htm
+		      (:div :class "alert-message error"
+			    (:p "Error detected on the page"))))
+		 (field "fullname" "Fullname:" "text"
+			:value fullname
+			:error (gethash 'fullname errors))
+		 (field "username" "Username:" "text"
+			:value username
+			:error (gethash 'username errors))
+		 (field "email" "Email:" "text"
+			:value email
+			:error (gethash 'email errors))
+		 (field "password" "Password:" "text"
+			:error (gethash 'password errors))
+		 (field "cpassword" "confirm passwd" "text")
+		 (:div :class "actions"
+		       (:input :class "btn primary" :type "submit"
+			       :name "register" :value "Register"))))
 	  ))))
 
 
@@ -475,31 +488,46 @@
 (defun loginp ()
   (hunchentoot:session-value 'user))
 
+(def-who-macro field (name description type &key value error)
+  `(:div :class (if ,error "clearfix error" "clearfix")
+	(:label ,description)
+	(:div :class "input"
+	      (:input :type ,type :name ,name
+		      :class (if ,error "error")
+		      :value ,value)
+	      (:span :class "help-inline" (cl-who:str ,error)))))
 
 (hunchentoot:define-easy-handler
     (login-page :uri "/login")
     ((login :parameter-type 'string :request-type :post)
-     (password :parameter-type 'string :request-type :post))
-  (let ((errors (validate-login)))
-    (if (and (= (hash-table-count errors) 0)
-	     (eq (hunchentoot:request-method*) :post))
-	(progn
-	  (if (login-session login password)
-	      (hunchentoot:redirect "/")))
-      (cl-who:with-html-output-to-string (*standard-output* nil :prologue t)
-	(:html
-	 (:body
-	  (:h1 "Login")
-	  (:form :action "" :method "post"
+     (password :parameter-type 'string :request-type :post)
+     (came-from :parameter-type 'string))
+  (let* ((errors (validate-login))
+	 (logged-in (when (= (hash-table-count errors) 0) (login-session login password))))
+    (unless (gethash 'password errors)
+      (setf (gethash 'password errors) "Invalid password."))
+    (if logged-in
+	(hunchentoot:redirect came-from)
+	(render-standard-page (:title "Login")
+	  (:form :action "" :class "login-form form-stacked" :method "post"
 		 (if (> (hash-table-count errors) 0)
 		     (cl-who:htm
-		      (:span "Error detected on the page")))
-		 (:ul
-		  (:li "username or email" (:input :type "text" :name "login" :value login)
-		       (cl-who:str (gethash 'login errors)))
-		  (:li "password" (:input :type "text" :name "password")
-		       (cl-who:str (gethash 'password errors)))
-		  (:li (:input :type "submit" :name "submit"))))))))))
+		      (:div :class "alert-message error"
+			    (:p "Error detected on the page"))))
+		  (:input :type "hidden" :name "came-from"
+			  :value came-from)
+		  (field "login" "Username or Email:" "text"
+			       :value login
+			       :error (gethash 'login errors))
+		  (field "password" "Password:" "text"
+			       :error (gethash 'password errors))
+		 (:div :class "actions"
+		       (:a :class "btn secondary"
+			   :href came-from "Cancel")
+		       (:input :class "btn primary"
+			       :type "submit"
+			       :name "login"
+			       :value "Login")))))))
 
 
 (hunchentoot:define-easy-handler
@@ -522,23 +550,30 @@
 		    :owner-id (slot-value owner 'id)
 		    :name name
 		    :path (namestring relative-path)
-		    :branch "/refs/heads/master"
+		    :branch "refs/heads/master"
 		    :public nil))
     (cl-git:ensure-git-repository-exist path t)))
 
 (hunchentoot:define-easy-handler
     (new-repository-page :uri "/repository/new")
     ((name :parameter-type 'string))
-  (if name
-      (progn
-	(create-repository name (loginp))
-	(hunchentoot:redirect (concatenate 'string "/"
-					   (slot-value (loginp) 'username) "/"name "/")))
-      (cl-who:with-html-output-to-string (*standard-output* nil :prologue t)
-	(:html
-	 (:body
-	  (:h1 "New Repository")
-	  (:form :action "" :method "post"
-		 (:ul
-		  (:li "Name" (:input :type "text" :name "name"))
-		  (:li (:input :type "submit" :name "submit")))))))))
+  (let* ((errors (validate-newrepository)))
+    (if (and (= (hash-table-count errors) 0)
+	     (eq (hunchentoot:request-method*) :post))
+	(progn
+	  (create-repository name (loginp))
+	  (hunchentoot:redirect (concatenate 'string "/"
+					     (slot-value (loginp) 'username) "/"name "/")))
+      (render-standard-page (:title "New Repository")
+	(:form :action "" :method "post" :class "form-stacked"
+	       (if (> (hash-table-count errors) 0)
+		   (cl-who:htm
+		    (:div :class "alert-message error"
+			  (:p "Error detected on the page"))))
+	       (field "name" "Name:" "text"
+		      :error (gethash 'name errors))
+	       (:div :class "actions"
+		     (:input :type "submit"
+			     :class "btn primary"
+			     :name "submit"
+			     :value "Create")))))))
