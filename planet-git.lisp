@@ -218,6 +218,14 @@
 			  (:height "27px")
 			  (("#branch")
 			   (:float "right")))
+
+			 ((".login-form") nil
+			  (("ul")
+			   (:list-style-type "none"))
+			  (("input")
+			   (:font-size "large"))
+			  (("input.btn")
+			   (:font-size "small")))
 			 )))))
 	    (:body
 	     (:div :class "topbar"
@@ -233,8 +241,37 @@
 					   (:li (:a :href "/logout" "Logout")))))
 				    (unless (loginp)
 				      (cl-who:htm
+				       (modal ("login-modal"
+					       "Login"
+					       :buttons ((:a :href "#" :class "btn primary"
+							     :onclick (ps:ps-inline
+								       (ps:@
+									(ps:chain ($ "#login-modal-form" )
+										  (submit))))
+
+							     "Login")
+							 (:a :href "#" :class "btn secondary"
+							     :onclick (ps:ps-inline
+								       (ps:@
+									(ps:chain ($ "#login-modal" )
+										  (modal "hide"))))
+							     "Cancel")))
+					 (:form :id "login-modal-form" :class "login-form"
+						:action "/login" :method "post"
+						(:ul
+						 (:input :type "hidden" :name "came-from"
+							 :value (hunchentoot:request-uri*))
+						 (:li "Username or Email:")
+						 (:li (:input :type "text" :name "login"))
+						 (:li "Password:")
+						 (:li (:input :type "text" :name "password")))))
 				       (:li (:a :href "/register" "Register"))
-				       (:li (:a :href "/login" "Login"))))))))
+				       (:li (:a :href (concatenate 'string
+								   "/login?came-from="
+								   (hunchentoot:request-uri*))
+						:data-controls-modal "login-modal"
+						:data-backdrop "true"
+						"Login"))))))))
 	     (:div :class "container"
 		   (:div :class "content"
 			 (:div :class "page-header"
@@ -246,24 +283,37 @@
 			       ,@body)))))))
 
 
-(defmacro modal ((heading &key buttons) &body body)
+(defmacro def-who-macro (name (&rest args) pseudo-html-form)
+  "A macro for use with CL-WHO's WITH-HTML-OUTPUT."
+    `(defmacro ,name (,@args)
+       `(cl-who:with-html-output (*standard-output* nil)
+	  ,,pseudo-html-form)))
+
+(defmacro def-who-macro* (name (&rest args) pseudo-html-form)
+  "Who-macro, which evaluates its arguments (like an ordinary function,
+which it is in fact.
+   Useful for defining syntactic constructs"
+  `(defun ,name (,@args)
+     ,pseudo-html-form))
+
+(def-who-macro modal ((id heading &key buttons) &body body)
   (let ((buttons (if buttons buttons
 		     '((:a :href "#" :class "btn primary" "Primary")
 		       (:a :href "#" :class "btn secondary" "Secondary")))))
-    `(:div :id "modal-from-dom" :class "modal hide fade"
-	   (:div :class "modal-header"
-		 (:a :href "#" :class "close" "&times;")
-		 (:h3 ,heading))
-	   (:div :class "modal-body"
-		 ,@body)
+    `(:div :id ,id :class "modal hide fade"
+		 (:div :class "modal-header"
+		       (:a :href "#" :class "close" "&times;")
+		       (:h3 ,heading))
+		 (:div :class "modal-body"
+		       ,@body)
 
-	   (:div :class "modal-footer"
-		 ,@buttons))))
+		 (:div :class "modal-footer"
+		       ,@buttons))))
+
 
 (defun home-page ()
  (render-standard-page (:title "Planet Git" :subtitle "a bad clone of github")
-    (if (loginp) (cl-who:htm (:a :href "/repository/new" "new repository")))
-    ))
+    (if (loginp) (cl-who:htm (:a :href "/repository/new" "new repository")))))
 
 
 (defun user-page ()
@@ -369,7 +419,7 @@
 						  branch "/"))))))
 		 (:div :class "project-bar"
 		       (:select :id "branch"
-				:onchange (ps:ps (select-branch
+				:onchange (ps:ps-inline (select-branch
 						  (ps:@ this options
 							(ps:@ this selected-index) value)))
 				(mapcar #'(lambda (x)
