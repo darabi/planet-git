@@ -268,7 +268,11 @@
 						 (:li "Username or Email:")
 						 (:li (:input :type "text" :name "login"))
 						 (:li "Password:")
-						 (:li (:input :type "text" :name "password")))))
+						 (:li (:input :type "text" :name "password")))
+						(:input :type "submit"
+							:style "visibility: hidden;"
+							:name "submit"
+							:value "Create")))
 				       (:li (:a :href "/register" "Register"))
 				       (:li (:a :href (concatenate 'string
 								   "/login?came-from="
