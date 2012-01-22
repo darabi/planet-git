@@ -181,8 +181,12 @@
 			((".page-header")
 			 (:background-color "#f5f5f5"
 			  :padding "20px 20px 10px"
-			  :margin "-20px -20px 20px"))
-					; Styles you shouldn't keep as they are for displaying this base example only
+			  :margin "-20px -20px 20px")
+			 (("h1")
+			 (:display "inline"
+			  :vertical-align "top"))
+			 (("img")
+			  (:margin-right "5px")))
 			((".content .span10, .content .span4")
 			 (:min-height "500px"))
 
@@ -315,6 +319,13 @@ which it is in fact.
  (render-standard-page (:title "Planet Git" :subtitle "a bad clone of github")
     (if (loginp) (cl-who:htm (:a :href "/repository/new" "new repository")))))
 
+(defun user-primary-email (id)
+  (let ((where (postmodern:sql (:= 'user_id id))))
+    (postmodern:query (:limit
+		       (:order-by (:select 'email :from 'email :where (:raw where))
+				  'rank)
+		       1)
+		      :single)))
 
 (defun user-page ()
   (let*
@@ -327,9 +338,10 @@ which it is in fact.
 	(let ((username (slot-value user 'username)))
 	  (render-standard-page (:title (cl-who:str username)
 			  :subtitle (cl-who:str (slot-value user 'fullname))
-			  :page-header (:a :class "btn primary pull-right"
-					   :href "/repository/new"
-					   "Add Repository"))
+			  :page-header ((:img :src (gravatar-url (user-primary-email (slot-value user 'id)) :size 40))
+					(:a :class "btn primary pull-right"
+					    :href "/repository/new"
+					    "Add Repository")))
 	    (let ((repositories (postmodern:select-dao
 				 'repository (:= 'owner-id (slot-value user 'id)))))
 	      (labels ((repository-fragment (repos)
@@ -357,12 +369,12 @@ which it is in fact.
     (t (append (flatten (car list)) (flatten (cdr list))))))
 
 (defun gravatar-url (email &key (size 80))
-  (concatenate 'string
-	       "http://www.gravatar.com/avatar/"
-	       (format nil "~(~{~2,'0X~}~)"
-		       (map 'list #'identity (md5:md5sum-sequence email)))
-	       "?s="
-	       (prin1-to-string size)))
+    (concatenate 'string
+		 "http://www.gravatar.com/avatar/"
+		 (format nil "~(~{~2,'0X~}~)"
+			 (map 'list #'identity (md5:md5sum-sequence (coerce email 'simple-string))))
+		 "?s="
+		 (prin1-to-string size)))
 
 (defun repository-page ()
   (let*
