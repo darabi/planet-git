@@ -419,8 +419,11 @@ which it is in fact.
 			 'repository (:and
 				      (:= 'owner-id (slot-value user 'id))
 				      (:= 'name repository-name)))))
+       (visible (or (slot-value repository 'public)
+		    (equal (slot-value user 'username)
+			   (when (loginp) (slot-value (loginp) 'username)))))
        (branch (if branch branch (slot-value repository 'branch))))
-    (if (and user repository)
+    (if (and visible user repository)
 	(cl-git:with-git-repository ((repository-path repository))
 	  (if (find branch (cl-git:git-reference-listall) :test #'equal)
 	      (render-standard-page (:title (cl-who:str (slot-value repository 'name)))
