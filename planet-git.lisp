@@ -27,7 +27,7 @@
  (list
   (hunchentoot:create-regex-dispatcher "^/?$" 'home-page)
   (hunchentoot:create-regex-dispatcher "^/[^/]+/$" 'user-page)
-  (hunchentoot:create-regex-dispatcher "^/[^/]+/[^/]+/$" 'repository-page)
+  (hunchentoot:create-regex-dispatcher "^/[^/]+/[^/]+/$" 'repository-home-page)
   (hunchentoot:create-regex-dispatcher "^/[^/]+/[^/]+/[^/]+/$" 'repository-branch-page)
   'hunchentoot:dispatch-easy-handlers
   (hunchentoot:create-folder-dispatcher-and-handler "/static/" (resource-path "static"))))
@@ -55,7 +55,7 @@
    (owner-id :col-type integer :initarg :owner-id)
    (name :col-type string :initarg :name)
    (path :col-type string :initarg :path)
-   (branch :col-type string :initarg :branch)
+   (branch :col-type (or postmodern:db-null string) :initarg :branch)
    (public :col-type boolean :initarg :public))
   (:metaclass postmodern:dao-class)
   (:keys id))
@@ -139,7 +139,7 @@
 ;;; View
 
 
-(defmacro render-standard-page ((&key title (subtitle "") page-header) &body body)
+(defmacro render-standard-page ((&key title (subtitle "") (body-class "span14") page-header) &body body)
   `(cl-who:with-html-output-to-string (*standard-output* nil :prologue t)
      (:html :xmlns "http://www.w3.org/1999/xhtml"
 	    :xml\:lang "en"
@@ -185,6 +185,8 @@
 			 (("h1")
 			 (:display "inline"
 			  :vertical-align "top"))
+			 (("span")
+			  (:margin ("0 5px")))
 			 (("img")
 			  (:margin-right "5px")))
 			((".content .span10, .content .span4")
@@ -217,6 +219,10 @@
 			  (("img")
 			   (:float "left"
 			    :margin-left "-40px")))
+
+			 ((".project") nil
+			  (("span.private")
+			   (:color "red")))
 
 			 ((".project-bar")
 			  (:height "27px")
@@ -287,7 +293,7 @@
 			       (:h1 ,title
 				    (:small ,subtitle)))
 			 (:div :class "row"
-			       (:div :class "span14"
+			       (:div :class ,body-class
 			       ,@body)))))))
 
 
@@ -339,30 +345,43 @@ which it is in fact.
 	       username))
        (user (car (postmodern:select-dao 'login (:= 'username username)))))
     (if user
-	(let ((username (slot-value user 'username)))
+	(let ((username (slot-value user 'username))
+	      (is-current-user (equal (slot-value user 'username)
+				      (when (loginp) (slot-value (loginp) 'username)))))
 	  (render-standard-page (:title (cl-who:str username)
 			  :subtitle (cl-who:str (slot-value user 'fullname))
 			  :page-header ((:img :src (gravatar-url (user-primary-email (slot-value user 'id)) :size 40))
-					(:a :class "btn primary pull-right"
-					    :href "/repository/new"
-					    "Add Repository")))
+					(when is-current-user (cl-who:htm (:a :class "btn primary pull-right"
+								  :href "/repository/new"
+								  "Add Repository"))))
+			  :body-class "span11")
 	    (let ((repositories (postmodern:select-dao
 				 'repository (:= 'owner-id (slot-value user 'id)))))
+	      (hunchentoot:log-message* hunchentoot:*lisp-warnings-log-level* "Repositories ~a" repositories)
 	      (labels ((repository-fragment (repos)
-			 (let ((repo (car repos)) (rest (cdr repos)))
-			   (if repo
-			       (cl-who:htm
-				(:div :class "repository"
-				      (:a :href (cl-who:str (concatenate
-							     'string
-							     (hunchentoot:request-uri*)
-							     (slot-value repo 'name)
-							     "/"))
-					  (:h3 :class "name" (cl-who:str
-							      (slot-value repo 'name))))))
-			       (repository-fragment rest)))))
-		(when repositories
-		  (repository-fragment repositories))))))
+			 (let* ((repo (car repos)) (rest (cdr repos))
+			       (visible (or (slot-value repo 'public)
+					    (equal (slot-value user 'username)
+						   (when (loginp) (slot-value (loginp) 'username)))))
+				(public (slot-value repo 'public)))
+			   (hunchentoot:log-message* hunchentoot:*lisp-warnings-log-level* "Repository ~a" repo)
+			   (when (and repo (or visible is-current-user))
+			     (cl-who:htm
+			      (:div :class "well project"
+				    (if public
+					(cl-who:htm (:span :class "pubilc" "Public"))
+					(cl-who:htm (:span :class "private" "Private")))
+				    (:a :href (cl-who:str
+					       (concatenate
+						'string
+						(hunchentoot:request-uri*)
+						(slot-value repo 'name)
+						"/"))
+					(:h3 :class "name"
+					     (cl-who:str
+					      (slot-value repo 'name)))))))
+			   (when rest (repository-fragment rest)))))
+		(when repositories (repository-fragment repositories))))))
 	(setf (hunchentoot:return-code*) hunchentoot:+http-not-found+))))
 
 (defun flatten (list)
@@ -380,7 +399,7 @@ which it is in fact.
 		 "?s="
 		 (prin1-to-string size)))
 
-(defun repository-page ()
+(defun repository-home-page ()
   (let*
       ((req (hunchentoot:request-uri*))
        (uri-parts (cl-ppcre:register-groups-bind
@@ -389,7 +408,7 @@ which it is in fact.
 		    (list username repository-name)))
        (username (car uri-parts))
        (repository-name (car (cdr uri-parts))))
-    (repository username repository-name)))
+    (repository-page username repository-name)))
 
 (defun repository-branch-page ()
   (let*
@@ -401,7 +420,7 @@ which it is in fact.
        (username (car uri-parts))
        (repository-name (second uri-parts))
        (branch (concatenate 'string "refs/heads/" (third uri-parts))))
-    (repository username repository-name :branch branch)))
+    (repository-page username repository-name :branch branch)))
 
 (defun url-join (&rest rest)
   (let ((sequence (mapcan #'(lambda (x) (list (string x) "/")) rest)))
@@ -412,65 +431,104 @@ which it is in fact.
 	    sequence
 	    :initial-value "/")))
 
-(defun repository (username repository-name &key branch)
+(defun selected-branch (repository repository-branches url-branch)
+  "From a REPOSITORY orm object a list of the git REPOSTIORY-BRANCHES
+and the possible branch in the url (URL-BRANCH) return the most
+aproprate branch to display."
+  (let ((default-branch (slot-value repository 'branch))
+	(default-branch* "refs/heads/master"))
+    (cond
+      ((eq repository-branches nil)
+       nil)
+      ((find url-branch repository-branches :test #'equal)
+       url-branch)
+      ((find default-branch repository-branches :test #'equal)
+       default-branch)
+      ((find default-branch* repository-branches :test #'equal)
+       default-branch*)
+      (t
+       (car repository-branches)))))
+
+(defun repository-page (username repository-name &key branch)
   (let*
       ((user (car (postmodern:select-dao 'login (:= 'username username))))
        (repository (car (postmodern:select-dao
 			 'repository (:and
 				      (:= 'owner-id (slot-value user 'id))
 				      (:= 'name repository-name)))))
-       (visible (or (slot-value repository 'public)
-		    (equal (slot-value user 'username)
-			   (when (loginp) (slot-value (loginp) 'username)))))
-       (branch (if branch branch (slot-value repository 'branch))))
+       (visible (when repository (or (slot-value repository 'public)
+				     (equal (slot-value user 'username)
+					    (when (loginp) (slot-value (loginp) 'username))))))
+       (is-current-user (when user (equal (slot-value user 'username)
+					  (when (loginp) (slot-value (loginp) 'username))))))
     (if (and visible user repository)
 	(cl-git:with-git-repository ((repository-path repository))
-	  (if (find branch (cl-git:git-reference-listall) :test #'equal)
-	      (render-standard-page (:title (cl-who:str (slot-value repository 'name)))
-		(cl-who:htm
-		 (:script :type "text/javascript"
-			  (cl-who:str
-			   (ps:ps
-			     (defun select-branch (branch)
-			       (setf (ps:getprop window 'location 'href)
-				     (concatenate 'string
-						  (ps:lisp (url-join username repository-name))
-						  branch "/"))))))
-		 (:div :class "project-bar"
-		       (:select :id "branch"
-				:onchange (ps:ps-inline (select-branch
-						  (ps:@ this options
-							(ps:@ this selected-index) value)))
-				(mapcar #'(lambda (x)
-					    (cl-who:htm
-					     (:option
-					      :value (remove-ref-path x)
-					      :selected (when (equal x branch) "true")
-					      (cl-who:str (remove-ref-path x)))))
-					(cl-git:git-reference-listall))))
-		 (:ol :class "commit-list"
-		      (let ((count 0))
-			(cl-git:with-git-revisions (commit :head branch)
-			  (setf count (+ count 1))
-			  (when (> count 10) (return))
-			  (cl-who:htm
-			   (:li
-			    (let* ((author (cl-git:git-commit-author commit))
-				   (name (first author))
-				   (email (second author))
-				   (timestamp (third author)))
-			      (cl-who:htm
-			       (:img :src (gravatar-url email :size 40))
-			       (:p
-				(cl-who:str
-				 (cl-git:git-commit-message commit)))
-			       (:span :class "author" (cl-who:str name))
-			       (:span :class "date"
-				      (cl-who:str
-				       (local-time:format-timestring nil timestamp :format
-								     '(:long-month " " :day ", " :year))))))
-			    )))))))
-	      (setf (hunchentoot:return-code*) hunchentoot:+http-not-found+)))
+	  (let* ((branches (cl-git:git-reference-listall))
+		 (branch (selected-branch repository branches branch)))
+	    (render-standard-page (:title
+				   (cl-who:htm (:a :href (url-join (slot-value user 'username))
+						   (cl-who:str (slot-value user 'username)))
+					       (:span (cl-who:str "/"))
+					       (cl-who:str (slot-value repository 'name)))
+				   :page-header ((:img :src (gravatar-url
+							     (user-primary-email (slot-value user 'id))
+							     :size 40))))
+	      (cond
+		((find branch branches :test #'equal)
+		 (cl-who:htm
+		  (:script :type "text/javascript"
+			   (cl-who:str
+			    (ps:ps
+			      (defun select-branch (branch)
+				(setf (ps:getprop window 'location 'href)
+				      (concatenate 'string
+						   (ps:lisp (url-join username repository-name))
+						   branch "/"))))))
+		  (:div :class "project-bar"
+			(:select :id "branch"
+				 :onchange (ps:ps-inline (select-branch
+							  (ps:@ this options
+								(ps:@ this selected-index) value)))
+				 (mapcar #'(lambda (x)
+					     (cl-who:htm
+					      (:option
+					       :value (remove-ref-path x)
+					       :selected (when (equal x branch) "true")
+					       (cl-who:str (remove-ref-path x)))))
+					 (cl-git:git-reference-listall))))
+		  (:ol :class "commit-list"
+		       (let ((count 0))
+			 (cl-git:with-git-revisions (commit :head branch)
+			   (setf count (+ count 1))
+			   (when (> count 10) (return))
+			   (cl-who:htm
+			    (:li
+			     (let* ((author (cl-git:git-commit-author commit))
+				    (name (first author))
+				    (email (second author))
+				    (timestamp (third author)))
+			       (cl-who:htm
+				(:img :src (gravatar-url email :size 40))
+				(:p
+				 (cl-who:str
+				  (cl-git:git-commit-message commit)))
+				(:span :class "author" (cl-who:str name))
+				(:span :class "date"
+				       (cl-who:str
+					(local-time:format-timestring nil timestamp :format
+								      '(:long-month " " :day ", " :year))))))
+			     )))))))
+		((and (eq branches nil) is-current-user)
+		 (cl-who:htm
+		  (:div :class "well"
+			(:h2 "Welcome to your new repository."))
+		  ))
+		((eq branches nil)
+		 (cl-who:htm
+		  (:div :class "well"
+			(:h2 "Under Construction."))
+		  ))
+		(t (setf (hunchentoot:return-code*) hunchentoot:+http-not-found+))))))
 	  (setf (hunchentoot:return-code*) hunchentoot:+http-not-found+))))
 
 
@@ -515,7 +573,7 @@ which it is in fact.
 		 (:div :class "actions"
 		       (:input :class "btn primary" :type "submit"
 			       :name "register" :value "Register"))))
-	  ))))
+	  )))
 
 
 (defun compare-password-hash (passwordhash password)
@@ -619,7 +677,7 @@ which it is in fact.
 		    :owner-id (slot-value owner 'id)
 		    :name name
 		    :path (namestring relative-path)
-		    :branch "refs/heads/master"
+		    :branch nil
 		    :public nil))
     (cl-git:ensure-git-repository-exist path t)))
 
@@ -641,6 +699,8 @@ which it is in fact.
 			  (:p "Error detected on the page"))))
 	       (field "name" "Name:" "text"
 		      :error (gethash 'name errors))
+	       (field "private" "Private:" "checkbox"
+		      :error (gethash 'private errors))
 	       (:div :class "actions"
 		     (:input :type "submit"
 			     :class "btn primary"
