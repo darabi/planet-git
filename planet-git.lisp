@@ -339,6 +339,14 @@ which it is in fact.
 		 (:div :class "modal-footer"
 		       ,@buttons))))
 
+(def-who-macro field (name description type &key value error)
+  `(:div :class (if ,error "clearfix error" "clearfix")
+	(:label ,description)
+	(:div :class "input"
+	      (:input :type ,type :name ,name
+		      :class (if ,error "error")
+		      :value ,value)
+	      (:span :class "help-inline" (cl-who:str ,error)))))
 
 (defun home-page ()
  (render-standard-page (:title "Planet Git" :subtitle "a bad clone of github")
@@ -428,9 +436,8 @@ which it is in fact.
        (user (car (postmodern:select-dao 'login (:= 'username username))))
        (is-current-user (when user (equal (slot-value user 'username)
 					  (when (loginp) (slot-value (loginp) 'username))))))
-    (if is-current-user
-
-)
+;    (if is-current-user)
+))
 
 (defun flatten (list)
   (cond
@@ -663,14 +670,6 @@ aproprate branch to display."
 (defun loginp ()
   (hunchentoot:session-value 'user))
 
-(def-who-macro field (name description type &key value error)
-  `(:div :class (if ,error "clearfix error" "clearfix")
-	(:label ,description)
-	(:div :class "input"
-	      (:input :type ,type :name ,name
-		      :class (if ,error "error")
-		      :value ,value)
-	      (:span :class "help-inline" (cl-who:str ,error)))))
 
 (hunchentoot:define-easy-handler
     (login-page :uri "/login")
