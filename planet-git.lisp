@@ -94,14 +94,21 @@
   (when (car (list (cl-ppcre:scan "[^a-zA-Z]" (hunchentoot:parameter fieldname))))
     (concatenate 'string "Error, " fieldname " can only contain alpha characters.")))
 
+(defun validate-username-exists (fieldname)
+  (when (car
+	 (postmodern:select-dao 'login
+				(:= 'username
+				    (hunchentoot:parameter fieldname))))
+    (concatenate 'string "Error, This " fieldname " is already taken.")))
+
 (defun validate-email (fieldname)
-  (when (car (list (cl-ppcre:scan "^[^@]+@[^@]+\\.[^@]+$" (hunchentoot:parameter fieldname))))
+  (unless (cl-ppcre:scan "^[^@]+@[^@]+[.][^@]+$" (hunchentoot:parameter fieldname))
     (concatenate 'string "Error, " fieldname " is not a valid email address.")))
 
-;; FIXME (russell) this still doesn't work
 (defun validate-password (fieldname)
-  (when (equal (hunchentoot:parameter fieldname) (hunchentoot:parameter "password"))
-    (concatenate 'string "Error, " fieldname " doesn't match password.")))
+  (when (equal (hunchentoot:parameter fieldname)
+	       (hunchentoot:parameter 'password))
+    (concatenate 'string "Error, passwords doesn't match.")))
 
 (defmacro validate-field (fieldname errors &rest validators)
   `(let ((lname ,fieldname)
@@ -122,7 +129,8 @@
 
 (def-validator validate-registration ()
   (validate-field 'fullname errors #'validate-length)
-  (validate-field 'username errors #'validate-length #'validate-username)
+  (validate-field 'username errors #'validate-length
+		  #'validate-username #'validate-username-exists)
   (validate-field 'email errors #'validate-length #'validate-email)
   (validate-field 'password errors #'validate-length)
   (validate-field 'cpassword errors #'validate-password))
@@ -592,21 +600,25 @@ aproprate branch to display."
     ((fullname :parameter-type 'string :request-type :post)
      (username :parameter-type 'string :request-type :post)
      (password :parameter-type 'string :request-type :post)
+     (cpassword :parameter-type 'string :request-type :post)
      (email :parameter-type 'string :request-type :post))
   (let ((errors (validate-registration)))
     (if (and (= (hash-table-count errors) 0)
 	     (eq (hunchentoot:request-method*) :post))
 	(progn
-	  (postmodern:insert-dao
-	   (make-instance 'email
-			  :user-id (postmodern:insert-dao
-				    (make-instance 'login
-						   :fullname fullname
-						   :username username
-						   :password password))
-			  :email email
-			  :rank 0))
-	  (hunchentoot:redirect "/"))
+	  (let ((login (postmodern:insert-dao
+			(make-instance 'login
+				       :fullname fullname
+				       :username username
+				       :password password)))
+		(session (hunchentoot:start-session)))
+	    (postmodern:insert-dao
+	     (make-instance 'email
+			    :user-id (slot-value login 'id)
+			    :email email
+			    :rank 0))
+	    (setf (hunchentoot:session-value 'user session) login)
+	    (hunchentoot:redirect (url-join (slot-value login 'username)))))
 	(render-standard-page (:title "Register")
 	  (:form :action "" :method "post"
 		 (if (> (hash-table-count errors) 0)
@@ -624,7 +636,8 @@ aproprate branch to display."
 			:error (gethash 'email errors))
 		 (field "password" "Password:" "text"
 			:error (gethash 'password errors))
-		 (field "cpassword" "confirm passwd" "text")
+		 (field "cpassword" "confirm passwd" "text"
+			:error (gethash 'cpassword errors))
 		 (:div :class "actions"
 		       (:input :class "btn primary" :type "submit"
 			       :name "register" :value "Register"))))
