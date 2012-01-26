@@ -27,8 +27,10 @@
  (list
   (hunchentoot:create-regex-dispatcher "^/?$" 'home-page)
   (hunchentoot:create-regex-dispatcher "^/[^/]+/$" 'user-page)
+  (hunchentoot:create-regex-dispatcher "^/[^/]+/settings/$" 'user-settings-page)
   (hunchentoot:create-regex-dispatcher "^/[^/]+/[^/]+/$" 'repository-home-page)
-  (hunchentoot:create-regex-dispatcher "^/[^/]+/[^/]+/[^/]+/$" 'repository-branch-page)
+  (hunchentoot:create-regex-dispatcher "^/[^/]+/[^/]+/branch/[^/]+/$" 'repository-branch-page)
+  (hunchentoot:create-regex-dispatcher "^/[^/]+/[^/]+/key/[^/]+/$" 'repository-key-page)
   'hunchentoot:dispatch-easy-handlers
   (hunchentoot:create-folder-dispatcher-and-handler "/static/" (resource-path "static"))))
 
@@ -50,6 +52,14 @@
   (:metaclass postmodern:dao-class)
   (:keys id user-id rank))
 
+(defclass keys ()
+  ((id :col-type serial :accessor id)
+   (user-id :col-type integer :initarg :user-id)
+   (title :col-type string :initarg :title)
+   (key :col-type string :initarg :email))
+  (:metaclass postmodern:dao-class)
+  (:keys id user-id))
+
 (defclass repository ()
   ((id :col-type serial :accessor id)
    (owner-id :col-type integer :initarg :owner-id)
@@ -67,6 +77,8 @@
   (postmodern:execute (postmodern:dao-table-definition 'login)))
 (unless (postmodern:table-exists-p 'email)
   (postmodern:execute (postmodern:dao-table-definition 'email)))
+(unless (postmodern:table-exists-p 'keys)
+  (postmodern:execute (postmodern:dao-table-definition 'keys)))
 (unless (postmodern:table-exists-p 'repository)
   (postmodern:execute (postmodern:dao-table-definition 'repository)))
 
@@ -187,6 +199,8 @@
 			  :vertical-align "top"))
 			 (("span")
 			  (:margin ("0 5px")))
+			 (("small")
+			  (:margin ("0 5px")))
 			 (("img")
 			  (:margin-right "5px")))
 			((".content .span10, .content .span4")
@@ -247,7 +261,8 @@
 				    (if (loginp)
 					(let ((username (slot-value (loginp) 'username)))
 					  (cl-who:htm
-					   (:li (:a :href (concatenate 'string "/" username "/") (cl-who:str username)))
+					   (:li (:a :href (url-join username) (cl-who:str username)))
+					   (:li (:a :href (url-join username "settings") (cl-who:str "Settings")))
 					   (:li (:a :href "/logout" "Logout")))))
 				    (unless (loginp)
 				      (cl-who:htm
@@ -277,7 +292,7 @@
 						 (:li (:input :type "text" :name "password")))
 						(:input :type "submit"
 							:style "visibility: hidden;"
-							:name "submit"
+							:name "create"
 							:value "Create")))
 				       (:li (:a :href "/register" "Register"))
 				       (:li (:a :href (concatenate 'string
@@ -384,6 +399,39 @@ which it is in fact.
 		(when repositories (repository-fragment repositories))))))
 	(setf (hunchentoot:return-code*) hunchentoot:+http-not-found+))))
 
+
+(defun user-settings-page ()
+  (let*
+      ((req (hunchentoot:request-uri*))
+       (username (cl-ppcre:register-groups-bind (username)
+		 ("^/(\\w+)/settings/?$" req)
+	       username))
+       (user (car (postmodern:select-dao 'login (:= 'username username))))
+       (is-current-user (when user (equal (slot-value user 'username)
+					  (when (loginp) (slot-value (loginp) 'username))))))
+    (if is-current-user
+	    (render-standard-page (:title
+				   (cl-who:htm (:a :href (url-join (slot-value user 'username))
+						   (cl-who:str (slot-value user 'username))))
+				   :page-header
+				   ((:img :src (gravatar-url
+						(user-primary-email (slot-value user 'id))
+						:size 40)))))
+    (setf (hunchentoot:return-code*) hunchentoot:+http-forbidden+))))
+
+(defun add-ssh-key ()
+  (let*
+      ((req (hunchentoot:request-uri*))
+       (username (cl-ppcre:register-groups-bind (username)
+		 ("^/(\\w+)/settings/add-key?$" req)
+	       username))
+       (user (car (postmodern:select-dao 'login (:= 'username username))))
+       (is-current-user (when user (equal (slot-value user 'username)
+					  (when (loginp) (slot-value (loginp) 'username))))))
+    (if is-current-user
+
+)
+
 (defun flatten (list)
   (cond
     ((null list) list)
@@ -415,7 +463,7 @@ which it is in fact.
       ((req (hunchentoot:request-uri*))
        (uri-parts (cl-ppcre:register-groups-bind
 		      (username repository-name branch)
-		      ("^/([^/]+)/([^/]+)/([^/]+)/?$" req)
+		      ("^/([^/]+)/([^/]+)/branch/([^/]+)/?$" req)
 		    (list username repository-name branch)))
        (username (car uri-parts))
        (repository-name (second uri-parts))
@@ -474,7 +522,7 @@ aproprate branch to display."
 							     (user-primary-email (slot-value user 'id))
 							     :size 40))))
 	      (cond
-		((find branch branches :test #'equal)
+		(branch
 		 (cl-who:htm
 		  (:script :type "text/javascript"
 			   (cl-who:str
@@ -482,7 +530,7 @@ aproprate branch to display."
 			      (defun select-branch (branch)
 				(setf (ps:getprop window 'location 'href)
 				      (concatenate 'string
-						   (ps:lisp (url-join username repository-name))
+						   (ps:lisp (url-join username repository-name "branch"))
 						   branch "/"))))))
 		  (:div :class "project-bar"
 			(:select :id "branch"
@@ -518,12 +566,12 @@ aproprate branch to display."
 					(local-time:format-timestring nil timestamp :format
 								      '(:long-month " " :day ", " :year))))))
 			     )))))))
-		((and (eq branches nil) is-current-user)
+		((and (eq branch nil) is-current-user)
 		 (cl-who:htm
 		  (:div :class "well"
 			(:h2 "Welcome to your new repository."))
 		  ))
-		((eq branches nil)
+		((eq branch nil)
 		 (cl-who:htm
 		  (:div :class "well"
 			(:h2 "Under Construction."))
@@ -663,7 +711,7 @@ aproprate branch to display."
   (hunchentoot:redirect "/"))
 
 
-(defun create-repository (name owner)
+(defun create-repository (name owner public)
   (let* ((username  (slot-value owner 'username))
 	 (relative-path (make-pathname :directory
 					       (list ':relative
@@ -677,18 +725,18 @@ aproprate branch to display."
 		    :owner-id (slot-value owner 'id)
 		    :name name
 		    :path (namestring relative-path)
-		    :branch nil
-		    :public nil))
+		    :public public))
     (cl-git:ensure-git-repository-exist path t)))
 
 (hunchentoot:define-easy-handler
     (new-repository-page :uri "/repository/new")
-    ((name :parameter-type 'string))
+    ((name :parameter-type 'string)
+     (public :parameter-type 'boolean))
   (let* ((errors (validate-newrepository)))
     (if (and (= (hash-table-count errors) 0)
 	     (eq (hunchentoot:request-method*) :post))
 	(progn
-	  (create-repository name (loginp))
+	  (create-repository name (loginp) public)
 	  (hunchentoot:redirect (concatenate 'string "/"
 					     (slot-value (loginp) 'username) "/"name "/")))
       (render-standard-page (:title "New Repository")
@@ -699,8 +747,8 @@ aproprate branch to display."
 			  (:p "Error detected on the page"))))
 	       (field "name" "Name:" "text"
 		      :error (gethash 'name errors))
-	       (field "private" "Private:" "checkbox"
-		      :error (gethash 'private errors))
+	       (field "public" "Public:" "checkbox"
+		      :error (gethash 'public errors))
 	       (:div :class "actions"
 		     (:input :type "submit"
 			     :class "btn primary"
