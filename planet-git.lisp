@@ -40,6 +40,7 @@
   ((id :col-type serial :accessor id)
    (fullname :col-type string :initarg :fullname)
    (username :col-type string :initarg :username)
+   (email :col-type string :initarg :email)
    (password :col-type string :initarg :password))
   (:metaclass postmodern:dao-class)
   (:keys id))
@@ -47,10 +48,9 @@
 (defclass email ()
   ((id :col-type serial :accessor id)
    (user-id :col-type integer :initarg :user-id)
-   (rank :col-type integer :initarg :rank)
    (email :col-type string :initarg :email))
   (:metaclass postmodern:dao-class)
-  (:keys id user-id rank))
+  (:keys id user-id))
 
 (defclass keys ()
   ((id :col-type serial :accessor id)
@@ -101,6 +101,13 @@
 				    (hunchentoot:parameter fieldname))))
     (concatenate 'string "Error, This " fieldname " is already taken.")))
 
+(defun validate-email-exists (fieldname)
+  (when (car
+	 (postmodern:select-dao 'email
+				(:= 'email
+				    (hunchentoot:parameter fieldname))))
+    (concatenate 'string "Error, This " fieldname " is already taken.")))
+
 (defun validate-email (fieldname)
   (unless (cl-ppcre:scan "^[^@]+@[^@]+[.][^@]+$" (hunchentoot:parameter fieldname))
     (concatenate 'string "Error, " fieldname " is not a valid email address.")))
@@ -141,6 +148,10 @@
 
 (def-validator validate-newrepository ()
   (validate-field 'name errors #'validate-length))
+
+(def-validator validate-newemail ()
+  (validate-field 'email errors #'validate-length
+		  #'validate-email #'validate-email-exists))
 
 ;;; Path
 
@@ -360,13 +371,17 @@ which it is in fact.
  (render-standard-page (:title "Planet Git" :subtitle "a bad clone of github")
     (if (loginp) (cl-who:htm (:a :href "/repository/new" "new repository")))))
 
-(defun user-primary-email (id)
-  (let ((where (postmodern:sql (:= 'user_id id))))
-    (postmodern:query (:limit
-		       (:order-by (:select 'email :from 'email :where (:raw where))
-				  'rank)
-		       1)
-		      :single)))
+
+(def-who-macro repository-item-fragment (name owner public)
+  `(cl-who:htm
+   (:div :class "well project"
+	 (if ,public
+	     (cl-who:htm (:span :class "pubilc" "Public"))
+	     (cl-who:htm (:span :class "private" "Private")))
+	 (:a :href (cl-who:str (url-join ,owner ,name))
+	     (:h3 :class "name"
+		  (cl-who:str ,name))))))
+
 
 (defun user-page ()
   (let*
@@ -381,7 +396,7 @@ which it is in fact.
 				      (when (loginp) (slot-value (loginp) 'username)))))
 	  (render-standard-page (:title (cl-who:str username)
 			  :subtitle (cl-who:str (slot-value user 'fullname))
-			  :page-header ((:img :src (gravatar-url (user-primary-email (slot-value user 'id)) :size 40))
+			  :page-header ((:img :src (gravatar-url (slot-value user 'email) :size 40))
 					(when is-current-user (cl-who:htm (:a :class "btn primary pull-right"
 								  :href "/repository/new"
 								  "Add Repository"))))
@@ -397,31 +412,20 @@ which it is in fact.
 				(public (slot-value repo 'public)))
 			   (hunchentoot:log-message* hunchentoot:*lisp-warnings-log-level* "Repository ~a" repo)
 			   (when (and repo (or visible is-current-user))
-			     (cl-who:htm
-			      (:div :class "well project"
-				    (if public
-					(cl-who:htm (:span :class "pubilc" "Public"))
-					(cl-who:htm (:span :class "private" "Private")))
-				    (:a :href (cl-who:str
-					       (concatenate
-						'string
-						(hunchentoot:request-uri*)
-						(slot-value repo 'name)
-						"/"))
-					(:h3 :class "name"
-					     (cl-who:str
-					      (slot-value repo 'name)))))))
+			     (repository-item-fragment (slot-value repo 'name)
+						       username
+						       public))
 			   (when rest (repository-fragment rest)))))
 		(when repositories (repository-fragment repositories))))))
 	(setf (hunchentoot:return-code*) hunchentoot:+http-not-found+))))
 
-(def-who-macro form-fragment ((fields) &key (class "form-stacked") buttons)
-  `(:form :action "" :method "post" :class ,class
+(def-who-macro form-fragment (id fields &key (class "form-stacked") buttons)
+  `(:form :id ,id :action "" :method "post" :class ,class
 	 (if (> (hash-table-count errors) 0)
 	     (cl-who:htm
 	      (:div :class "alert-message error"
 		    (:p "Error detected on the page"))))
-	 ,(mapcar (lambda (field)
+	 ,@(mapcar (lambda (field)
 		    (let ((field-name (car field))
 			  (field-title (second field))
 			  (field-type (third field)))
@@ -432,6 +436,17 @@ which it is in fact.
 		  fields)
 	 (:div :class "actions"
 	       ,@buttons)))
+
+(def-who-macro email-item-fragment (user email)
+  `(cl-who:htm
+   (:div :class "alert-message"
+	 (:a :class "close" :href (cl-who:str
+				   (url-join ,user
+					     "email"
+					     (write-to-string (slot-value ,email 'id))
+					     "delete"))
+	     (cl-who:str "x"))
+	 (cl-who:str (slot-value ,email 'email)))))
 
 
 (defun user-settings-page ()
@@ -446,29 +461,29 @@ which it is in fact.
 			   (slot-value user 'username)
 			   (when (loginp)
 			     (slot-value (loginp) 'username))))))
-    (if is-current-user
+    (let ((errors (validate-newemail)))
+      (if is-current-user
+	  (let ((emails (postmodern:select-dao 'email (:= 'user-id (slot-value user 'id)))))
 	    (render-standard-page (:title
 				   (cl-who:htm (:a :href (url-join (slot-value user 'username))
 						   (cl-who:str (slot-value user 'username))))
 				   :page-header
 				   ((:img :src (gravatar-url
-						(user-primary-email (slot-value user 'id))
+						(slot-value user 'email)
 						:size 40))))
-	      	(:form :action "" :method "post" :class "form-stacked"
-		       (if (> (hash-table-count errors) 0)
-			   (cl-who:htm
-			    (:div :class "alert-message error"
-				  (:p "Error detected on the page"))))
-		       (field-fragment "name" "Name:" "text"
-			      :error (gethash 'name errors))
-		       (field-fragment "public" "Public:" "checkbox"
-			      :error (gethash 'public errors))
-		       (:div :class "actions"
-			     (:input :type "submit"
-				     :class "btn primary"
-				     :name "submit"
-				     :value "Create")))))
-    (setf (hunchentoot:return-code*) hunchentoot:+http-forbidden+))))
+				  (labels ((email-fragment (emails)
+					     (let* ((email (car emails)) (rest (cdr emails)))
+					       (email-item-fragment username email)
+					       (when rest (email-fragment rest)))))
+				    (when emails (email-fragment emails)))
+				  (form-fragment "add-email"
+						 (("email" "Email:" "text"))
+						 :buttons ((:input :type "submit"
+								   :class "btn primary"
+								   :name "add"
+								   :value "Add")))))
+	  (setf (hunchentoot:return-code*) hunchentoot:+http-forbidden+)))))
+
 
 (defun add-ssh-key ()
   (let*
@@ -482,12 +497,6 @@ which it is in fact.
 ;    (if is-current-user)
 ))
 
-(defun flatten (list)
-  (cond
-    ((null list) list)
-    ((null (car list)) (flatten (cdr list)))
-    ((atom (car list)) (cons (car list) (flatten (cdr list))))
-    (t (append (flatten (car list)) (flatten (cdr list))))))
 
 (defun gravatar-url (email &key (size 80))
     (concatenate 'string
@@ -569,7 +578,7 @@ aproprate branch to display."
 					       (:span (cl-who:str "/"))
 					       (cl-who:str (slot-value repository 'name)))
 				   :page-header ((:img :src (gravatar-url
-							     (user-primary-email (slot-value user 'id))
+							    (slot-value user 'id)
 							     :size 40))))
 	      (cond
 		(branch
@@ -645,6 +654,7 @@ aproprate branch to display."
 			(make-instance 'login
 				       :fullname fullname
 				       :username username
+				       :email email
 				       :password password)))
 		(session (hunchentoot:start-session)))
 	    (postmodern:insert-dao
