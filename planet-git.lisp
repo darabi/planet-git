@@ -347,7 +347,7 @@ which it is in fact.
 		 (:div :class "modal-footer"
 		       ,@buttons))))
 
-(def-who-macro field (name description type &key value error)
+(def-who-macro field-fragment (name description type &key value error)
   `(:div :class (if ,error "clearfix error" "clearfix")
 	(:label ,description)
 	(:div :class "input"
@@ -415,6 +415,24 @@ which it is in fact.
 		(when repositories (repository-fragment repositories))))))
 	(setf (hunchentoot:return-code*) hunchentoot:+http-not-found+))))
 
+(def-who-macro form-fragment ((fields) &key (class "form-stacked") buttons)
+  `(:form :action "" :method "post" :class ,class
+	 (if (> (hash-table-count errors) 0)
+	     (cl-who:htm
+	      (:div :class "alert-message error"
+		    (:p "Error detected on the page"))))
+	 ,(mapcar (lambda (field)
+		    (let ((field-name (car field))
+			  (field-title (second field))
+			  (field-type (third field)))
+		      `(field-fragment ,(string-downcase field-name)
+				       ,field-title
+				       ,(string-downcase field-type)
+			:error (gethash ,field-name errors))))
+		  fields)
+	 (:div :class "actions"
+	       ,@buttons)))
+
 
 (defun user-settings-page ()
   (let*
@@ -423,8 +441,11 @@ which it is in fact.
 		 ("^/(\\w+)/settings/?$" req)
 	       username))
        (user (car (postmodern:select-dao 'login (:= 'username username))))
-       (is-current-user (when user (equal (slot-value user 'username)
-					  (when (loginp) (slot-value (loginp) 'username))))))
+       (is-current-user (when user
+			  (equal
+			   (slot-value user 'username)
+			   (when (loginp)
+			     (slot-value (loginp) 'username))))))
     (if is-current-user
 	    (render-standard-page (:title
 				   (cl-who:htm (:a :href (url-join (slot-value user 'username))
@@ -432,7 +453,21 @@ which it is in fact.
 				   :page-header
 				   ((:img :src (gravatar-url
 						(user-primary-email (slot-value user 'id))
-						:size 40)))))
+						:size 40))))
+	      	(:form :action "" :method "post" :class "form-stacked"
+		       (if (> (hash-table-count errors) 0)
+			   (cl-who:htm
+			    (:div :class "alert-message error"
+				  (:p "Error detected on the page"))))
+		       (field-fragment "name" "Name:" "text"
+			      :error (gethash 'name errors))
+		       (field-fragment "public" "Public:" "checkbox"
+			      :error (gethash 'public errors))
+		       (:div :class "actions"
+			     (:input :type "submit"
+				     :class "btn primary"
+				     :name "submit"
+				     :value "Create")))))
     (setf (hunchentoot:return-code*) hunchentoot:+http-forbidden+))))
 
 (defun add-ssh-key ()
@@ -625,18 +660,18 @@ aproprate branch to display."
 		     (cl-who:htm
 		      (:div :class "alert-message error"
 			    (:p "Error detected on the page"))))
-		 (field "fullname" "Fullname:" "text"
+		 (field-fragment "fullname" "Fullname:" "text"
 			:value fullname
 			:error (gethash 'fullname errors))
-		 (field "username" "Username:" "text"
+		 (field-fragment "username" "Username:" "text"
 			:value username
 			:error (gethash 'username errors))
-		 (field "email" "Email:" "text"
+		 (field-fragment "email" "Email:" "text"
 			:value email
 			:error (gethash 'email errors))
-		 (field "password" "Password:" "text"
+		 (field-fragment "password" "Password:" "text"
 			:error (gethash 'password errors))
-		 (field "cpassword" "confirm passwd" "text"
+		 (field-fragment "cpassword" "confirm passwd" "text"
 			:error (gethash 'cpassword errors))
 		 (:div :class "actions"
 		       (:input :class "btn primary" :type "submit"
@@ -703,10 +738,10 @@ aproprate branch to display."
 			    (:p "Error detected on the page"))))
 		  (:input :type "hidden" :name "came-from"
 			  :value came-from)
-		  (field "login" "Username or Email:" "text"
+		  (field-fragment "login" "Username or Email:" "text"
 			       :value login
 			       :error (gethash 'login errors))
-		  (field "password" "Password:" "text"
+		  (field-fragment "password" "Password:" "text"
 			       :error (gethash 'password errors))
 		 (:div :class "actions"
 		       (:a :class "btn secondary"
@@ -757,9 +792,9 @@ aproprate branch to display."
 		   (cl-who:htm
 		    (:div :class "alert-message error"
 			  (:p "Error detected on the page"))))
-	       (field "name" "Name:" "text"
+	       (field-fragment "name" "Name:" "text"
 		      :error (gethash 'name errors))
-	       (field "public" "Public:" "checkbox"
+	       (field-fragment "public" "Public:" "checkbox"
 		      :error (gethash 'public errors))
 	       (:div :class "actions"
 		     (:input :type "submit"
