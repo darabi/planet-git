@@ -27,7 +27,7 @@
  (list
   (hunchentoot:create-regex-dispatcher "^/?$" 'home-page)
   (hunchentoot:create-regex-dispatcher "^/[^/]+/$" 'user-page)
-  (hunchentoot:create-regex-dispatcher "^/[^/]+/settings/$" 'user-settings-page)
+  (hunchentoot:create-regex-dispatcher "^/[^/]+/settings/$" 'user-settings-view)
   (hunchentoot:create-regex-dispatcher "^/[^/]+/[^/]+/$" 'repository-home-page)
   (hunchentoot:create-regex-dispatcher "^/[^/]+/[^/]+/branch/[^/]+/$" 'repository-branch-page)
   (hunchentoot:create-regex-dispatcher "^/[^/]+/[^/]+/key/[^/]+/$" 'repository-key-page)
@@ -323,26 +323,32 @@
 	     (:div :class "container"
 		   (:div :class "content"
 			 (:div :class "page-header"
-			       ,page-header
-			       (:h1 ,title
-				    (:small ,subtitle)))
+			       ,(or `(cl-who:htm ,page-header)
+				    `(cl-who:htm (:h1 ,title
+						      (:small ,subtitle)))))
 			 (:div :class "row"
 			       (:div :class ,body-class
 			       ,@body)))))))
 
 
-(defmacro def-who-macro (name (&rest args) pseudo-html-form)
+(defmacro def-who-macro (name (&rest args) &optional documentation pseudo-html-form)
   "A macro for use with CL-WHO's WITH-HTML-OUTPUT."
+  (let ((documentation (if (stringp documentation) documentation ""))
+	(pseudo-html-form (if (stringp documentation) pseudo-html-form documentation)))
     `(defmacro ,name (,@args)
+       ,documentation
        `(cl-who:with-html-output (*standard-output* nil)
-	  ,,pseudo-html-form)))
+	  ,,pseudo-html-form))))
 
-(defmacro def-who-macro* (name (&rest args) pseudo-html-form)
+(defmacro def-who-macro* (name (&rest args) &optional documentation pseudo-html-form)
   "Who-macro, which evaluates its arguments (like an ordinary function,
-which it is in fact.
-   Useful for defining syntactic constructs"
-  `(defun ,name (,@args)
-     ,pseudo-html-form))
+which it is in fact.  Useful for defining syntactic constructs"
+  (let ((documentation (if (stringp documentation) documentation ""))
+	(pseudo-html-form (if (stringp documentation) pseudo-html-form documentation)))
+    `(defun ,name (,@args)
+       ,documentation
+       (cl-who:with-html-output (*standard-output* nil)
+	 ,pseudo-html-form))))
 
 (def-who-macro modal ((id heading &key buttons) &body body)
   (let ((buttons (if buttons buttons
@@ -357,6 +363,7 @@ which it is in fact.
 
 		 (:div :class "modal-footer"
 		       ,@buttons))))
+
 
 (def-who-macro field-fragment (name description type &key value error)
   `(:div :class (if ,error "clearfix error" "clearfix")
@@ -419,8 +426,8 @@ which it is in fact.
 		(when repositories (repository-fragment repositories))))))
 	(setf (hunchentoot:return-code*) hunchentoot:+http-not-found+))))
 
-(def-who-macro form-fragment (id fields &key (class "form-stacked") buttons)
-  `(:form :id ,id :action "" :method "post" :class ,class
+(def-who-macro form-fragment (id fields &key (action "") (class "form-stacked") buttons)
+  `(:form :id ,id :action ,action :method "post" :class ,class
 	 (if (> (hash-table-count errors) 0)
 	     (cl-who:htm
 	      (:div :class "alert-message error"
@@ -437,19 +444,42 @@ which it is in fact.
 	 (:div :class "actions"
 	       ,@buttons)))
 
-(def-who-macro email-item-fragment (user email)
-  `(cl-who:htm
+(def-who-macro* email-item-fragment (user email)
+  "this fragment renders a users email address as a list item with a
+delete button"
+  (cl-who:htm
    (:div :class "alert-message"
 	 (:a :class "close" :href (cl-who:str
-				   (url-join ,user
+				   (url-join (slot-value user 'username)
 					     "email"
-					     (write-to-string (slot-value ,email 'id))
+					     (write-to-string (slot-value email 'id))
 					     "delete"))
 	     (cl-who:str "x"))
-	 (cl-who:str (slot-value ,email 'email)))))
+	 (cl-who:str (slot-value email 'email)))))
 
 
-(defun user-settings-page ()
+(def-who-macro* user-settings-page (user errors emails)
+  (render-standard-page (:title (cl-who:str (slot-value user 'username))
+			 :page-header
+				((:img :src (gravatar-url
+					     (slot-value user 'email)
+					     :size 40))
+				 (:h1 (:a :href (url-join (slot-value user 'username))
+					  (cl-who:str (slot-value user 'username)))
+				      (:small "Settings"))))
+			(labels ((email-fragment (emails)
+				   (let* ((email (car emails)) (rest (cdr emails)))
+				     (email-item-fragment user email)
+				     (when rest (email-fragment rest)))))
+			  (when emails (email-fragment emails)))
+			(form-fragment "add-email"
+				       (("email" "Email:" "text"))
+				       :buttons ((:input :type "submit"
+							 :class "btn primary"
+							 :name "add-email"
+							 :value "Add")))))
+
+(defun user-settings-view ()
   (let*
       ((req (hunchentoot:request-uri*))
        (username (cl-ppcre:register-groups-bind (username)
@@ -464,24 +494,8 @@ which it is in fact.
     (let ((errors (validate-newemail)))
       (if is-current-user
 	  (let ((emails (postmodern:select-dao 'email (:= 'user-id (slot-value user 'id)))))
-	    (render-standard-page (:title
-				   (cl-who:htm (:a :href (url-join (slot-value user 'username))
-						   (cl-who:str (slot-value user 'username))))
-				   :page-header
-				   ((:img :src (gravatar-url
-						(slot-value user 'email)
-						:size 40))))
-				  (labels ((email-fragment (emails)
-					     (let* ((email (car emails)) (rest (cdr emails)))
-					       (email-item-fragment username email)
-					       (when rest (email-fragment rest)))))
-				    (when emails (email-fragment emails)))
-				  (form-fragment "add-email"
-						 (("email" "Email:" "text"))
-						 :buttons ((:input :type "submit"
-								   :class "btn primary"
-								   :name "add"
-								   :value "Add")))))
+	    (break "foo")
+	    (user-settings-page user errors emails))
 	  (setf (hunchentoot:return-code*) hunchentoot:+http-forbidden+)))))
 
 
