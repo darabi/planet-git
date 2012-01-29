@@ -12,4 +12,5 @@
 	       #:parenscript
 	       #:md5)
   :components ((:file "package")
-               (:file "planet-git")))
+               (:file "compat")
+	       (:file "planet-git")))
