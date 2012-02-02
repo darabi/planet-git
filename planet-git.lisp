@@ -169,20 +169,6 @@
 ;;; View
 
 
-(def-who-macro modal ((id heading &key buttons) &body body)
-  (let ((buttons (if buttons buttons
-		     '((:a :href "#" :class "btn primary" "Primary")
-		       (:a :href "#" :class "btn secondary" "Secondary")))))
-    `(:div :id ,id :class "modal hide fade"
-		 (:div :class "modal-header"
-		       (:a :href "#" :class "close" "&times;")
-		       (:h3 ,heading))
-		 (:div :class "modal-body"
-		       ,@body)
-
-		 (:div :class "modal-footer"
-		       ,@buttons))))
-
 
 (def-who-macro field-fragment (name description type &key value error)
   `(:div :class (if ,error "clearfix error" "clearfix")

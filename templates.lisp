@@ -181,3 +181,18 @@ which it is in fact.  Useful for defining syntactic constructs"
 			 (:div :class "row"
 			       (:div :class ,body-class
 			       ,@body)))))))
+
+
+(def-who-macro modal ((id heading &key buttons) &body body)
+  (let ((buttons (if buttons buttons
+		     '((:a :href "#" :class "btn primary" "Primary")
+		       (:a :href "#" :class "btn secondary" "Secondary")))))
+    `(:div :id ,id :class "modal hide fade"
+		 (:div :class "modal-header"
+		       (:a :href "#" :class "close" "&times;")
+		       (:h3 ,heading))
+		 (:div :class "modal-body"
+		       ,@body)
+
+		 (:div :class "modal-footer"
+		       ,@buttons))))
