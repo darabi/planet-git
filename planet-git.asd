@@ -14,4 +14,5 @@
   :components ((:file "package")
 	       (:file "compat")
 	       (:file "rest")
+	       (:file "forms")
 	       (:file "planet-git")))

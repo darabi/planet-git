@@ -25,9 +25,8 @@
 
 (setq hunchentoot:*dispatch-table*
  (list
+  'dispatch-rest-handlers
   (hunchentoot:create-regex-dispatcher "^/?$" 'home-page)
-  (hunchentoot:create-regex-dispatcher "^/[^/]+/$" 'user-page)
-  (hunchentoot:create-regex-dispatcher "^/[^/]+/settings/$" 'user-settings-view)
   (hunchentoot:create-regex-dispatcher "^/[^/]+/[^/]+/$" 'repository-home-page)
   (hunchentoot:create-regex-dispatcher "^/[^/]+/[^/]+/branch/[^/]+/$" 'repository-branch-page)
   (hunchentoot:create-regex-dispatcher "^/[^/]+/[^/]+/key/[^/]+/$" 'repository-key-page)
@@ -390,13 +389,9 @@ which it is in fact.  Useful for defining syntactic constructs"
 		  (cl-who:str ,name))))))
 
 
-(defun user-page ()
-  (let*
-      ((req (hunchentoot:request-uri*))
-       (username (cl-ppcre:register-groups-bind (username)
-		 ("^/(\\w+)/?$" req)
-	       username))
-       (user (car (postmodern:select-dao 'login (:= 'username username)))))
+(define-rest-handler (user-page :uri "^/(\\w+)/?$" :args (username)) ()
+  (let
+      ((user (car (postmodern:select-dao 'login (:= 'username username)))))
     (if user
 	(let ((username (slot-value user 'username))
 	      (is-current-user (equal (slot-value user 'username)
@@ -428,10 +423,10 @@ which it is in fact.  Useful for defining syntactic constructs"
 
 (def-who-macro form-fragment (id fields &key (action "") (class "form-stacked") buttons)
   `(:form :id ,id :action ,action :method "post" :class ,class
-	 (if (> (hash-table-count errors) 0)
+	  (if (> (hash-table-count errors) 0)
 	     (cl-who:htm
 	      (:div :class "alert-message error"
-		    (:p "Error detected on the page"))))
+	  	    (:p "Error detected on the page"))))
 	 ,@(mapcar (lambda (field)
 		    (let ((field-name (car field))
 			  (field-title (second field))
@@ -451,6 +446,7 @@ delete button"
    (:div :class "alert-message"
 	 (:a :class "close" :href (cl-who:str
 				   (url-join (slot-value user 'username)
+					     "settings"
 					     "email"
 					     (write-to-string (slot-value email 'id))
 					     "delete"))
@@ -476,27 +472,42 @@ delete button"
 				       (("email" "Email:" "text"))
 				       :buttons ((:input :type "submit"
 							 :class "btn primary"
-							 :name "add-email"
+							 :name "email-form-submit"
 							 :value "Add")))))
 
-(defun user-settings-view ()
+(define-form
+    email-form
+    ((email :parameter-type 'string :request-type :post :validate (#'validate-length))))
+
+(define-form-handler (user-settings-view :uri "^/(\\w+)/settings/?$" :args (username))
+    (email-form)
   (let*
-      ((req (hunchentoot:request-uri*))
-       (username (cl-ppcre:register-groups-bind (username)
-		 ("^/(\\w+)/settings/?$" req)
-	       username))
-       (user (car (postmodern:select-dao 'login (:= 'username username))))
+      ((user (car (postmodern:select-dao 'login (:= 'username username))))
        (is-current-user (when user
 			  (equal
 			   (slot-value user 'username)
 			   (when (loginp)
 			     (slot-value (loginp) 'username))))))
-    (let ((errors (validate-newemail)))
-      (if is-current-user
+    (hunchentoot:log-message* hunchentoot:*lisp-warnings-log-level*
+			      "email ~a" email)
+    (hunchentoot:log-message* hunchentoot:*lisp-warnings-log-level*
+			      "user ~a" user)
+    (hunchentoot:log-message* hunchentoot:*lisp-warnings-log-level*
+			      "is-current-user ~a" is-current-user)
+    (hunchentoot:log-message* hunchentoot:*lisp-warnings-log-level*
+			      "POST PARAMETERS ~a"
+			      (hunchentoot:post-parameters*))
+    (if is-current-user
+	(let ((errors
+		(cond-forms
+		 (email-form
+		  (postmodern:insert-dao
+		   (make-instance 'email
+				  :user-id (slot-value (loginp) 'id)
+				  :email email))))))
 	  (let ((emails (postmodern:select-dao 'email (:= 'user-id (slot-value user 'id)))))
-	    (break "foo")
-	    (user-settings-page user errors emails))
-	  (setf (hunchentoot:return-code*) hunchentoot:+http-forbidden+)))))
+	    (user-settings-page user errors emails)))
+	(setf (hunchentoot:return-code*) hunchentoot:+http-forbidden+))))
 
 
 (defun add-ssh-key ()
@@ -592,7 +603,7 @@ aproprate branch to display."
 					       (:span (cl-who:str "/"))
 					       (cl-who:str (slot-value repository 'name)))
 				   :page-header ((:img :src (gravatar-url
-							    (slot-value user 'id)
+							    (slot-value user 'email)
 							     :size 40))))
 	      (cond
 		(branch
@@ -652,55 +663,6 @@ aproprate branch to display."
 		(t (setf (hunchentoot:return-code*) hunchentoot:+http-not-found+))))))
 	  (setf (hunchentoot:return-code*) hunchentoot:+http-not-found+))))
 
-
-
-(defun compute-real-form-name (symbol)
-  "Computes the `real' paramater name \(a string) from the Lisp
-symbol SYMBOL.  Used in cases where no parameter name is
-provided."
-  ;; we just downcase the symbol's name
-  (concatenate 'string "form-" (string-downcase symbol) "-submit"))
-
-
-(defmacro define-form-handler (description lambda-list &body body)
-  "description is the higher level description from define-rest-handler, lambda list is a list of forms and fields."
-  `(define-rest-handler ,description
-       ,(mapcan (lambda (form)
-		 (mapcar (lambda (field)
-			   (destructuring-bind
-			       (parameter-name &key
-						 real-name
-						 parameter-type
-						 init-form
-						 request-type
-						 validate)
-			       field
-			     (list parameter-name
-				   :real-name real-name
-				   :parameter-type parameter-type
-				   :init-form init-form
-				   :request-type request-type)))
-			 (second form)))
-	       lambda-list)
-     (cond
-       ,@(mapcar (lambda (form)
-		  (let ((form-name (compute-real-form-name (car form))))
-		    `((hunchentoot:post-parameter ,form-name)
-		      (let* ((errors (validate-newrepository)))
-			(if (= (hash-table-count errors) 0)
-				 '(do some stuff))))))
-		lambda-list))
-     ,@body))
-
-(define-form-handler
-    (register-page :uri "/register")
-    ((form1 ((fullname :parameter-type 'string :request-type :post
-		       :validate #'validate-length)
-	     (username :parameter-type 'string :request-type :post))
-	    body)
-     (form2 ((email :parameter-type 'string :request-type :post))
-	    body))
-  default-body)
 
 (hunchentoot:define-easy-handler
     (register-page :uri "/register")
@@ -797,9 +759,9 @@ provided."
     ((login :parameter-type 'string :request-type :post)
      (password :parameter-type 'string :request-type :post)
      (came-from :parameter-type 'string))
-  (let* ((errors (validate-login))
-	 (logged-in (when (= (hash-table-count errors) 0) (login-session login password))))
-    (unless (gethash 'password errors)
+  (let* ((errors (when (and login password) (validate-login)))
+	 (logged-in (when (and errors (= (hash-table-count errors) 0)) (login-session login password))))
+    (unless (and errors (gethash 'password errors))
       (setf (gethash 'password errors) "Invalid password."))
     (if logged-in
 	(hunchentoot:redirect came-from)

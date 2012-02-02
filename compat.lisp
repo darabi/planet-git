@@ -1,3 +1,6 @@
+;;;; planet-git.lisp
+
+(in-package #:planet-git)
 
 (defmacro with-unique-names ((&rest bindings) &body body)
   "Syntax: WITH-UNIQUE-NAMES ( { var | (var x) }* ) declaration* form*
