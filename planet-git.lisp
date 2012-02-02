@@ -243,7 +243,7 @@
 
 (def-who-macro form-fragment (id fields &key (action "") (class "form-stacked") buttons)
   `(:form :id ,id :action ,action :method "post" :class ,class
-	  (if (> (hash-table-count errors) 0)
+	  (if (> (hash-table-count *form-errors*) 0)
 	     (cl-who:htm
 	      (:div :class "alert-message error"
 	  	    (:p "Error detected on the page"))))
@@ -251,10 +251,11 @@
 		    (let ((field-name (car field))
 			  (field-title (second field))
 			  (field-type (third field)))
-		      `(field-fragment ,(string-downcase field-name)
+		      `(field-fragment (string-downcase (symbol-name ,field-name))
 				       ,field-title
 				       ,(string-downcase field-type)
-			:error (gethash ,field-name errors))))
+			:error (gethash ,field-name *form-errors*)
+			:error ,field-name)))
 		  fields)
 	 (:div :class "actions"
 	       ,@buttons)))
@@ -274,7 +275,7 @@ delete button"
 	 (cl-who:str (slot-value email 'email)))))
 
 
-(def-who-macro* user-settings-page (user errors emails)
+(def-who-macro* user-settings-page (user emails)
   (render-standard-page (:title (cl-who:str (slot-value user 'username))
 			 :page-header
 				((:img :src (gravatar-url
@@ -289,7 +290,7 @@ delete button"
 				     (when rest (email-fragment rest)))))
 			  (when emails (email-fragment emails)))
 			(form-fragment "add-email"
-				       (("email" "Email:" "text"))
+				       (('email "Email:" "text"))
 				       :buttons ((:input :type "submit"
 							 :class "btn primary"
 							 :name "email-form-submit"
@@ -297,7 +298,7 @@ delete button"
 
 (define-form
     email-form
-    ((email :parameter-type 'string :request-type :post :validate (#'validate-length))))
+    ((email :parameter-type 'string :request-type :post :validate (#'validate-length #'validate-email))))
 
 (define-form-handler (user-settings-view :uri "^/(\\w+)/settings/?$" :args (username))
     (email-form)
@@ -308,25 +309,16 @@ delete button"
 			   (slot-value user 'username)
 			   (when (loginp)
 			     (slot-value (loginp) 'username))))))
-    (hunchentoot:log-message* hunchentoot:*lisp-warnings-log-level*
-			      "email ~a" email)
-    (hunchentoot:log-message* hunchentoot:*lisp-warnings-log-level*
-			      "user ~a" user)
-    (hunchentoot:log-message* hunchentoot:*lisp-warnings-log-level*
-			      "is-current-user ~a" is-current-user)
-    (hunchentoot:log-message* hunchentoot:*lisp-warnings-log-level*
-			      "POST PARAMETERS ~a"
-			      (hunchentoot:post-parameters*))
     (if is-current-user
-	(let ((errors
-		(cond-forms
-		 (email-form
-		  (postmodern:insert-dao
-		   (make-instance 'email
-				  :user-id (slot-value (loginp) 'id)
-				  :email email))))))
+	(progn
+	  (cond-forms
+	   (email-form
+	    (postmodern:insert-dao
+	     (make-instance 'email
+			    :user-id (slot-value (loginp) 'id)
+			    :email email))))
 	  (let ((emails (postmodern:select-dao 'email (:= 'user-id (slot-value user 'id)))))
-	    (user-settings-page user errors emails)))
+	    (user-settings-page user emails)))
 	(setf (hunchentoot:return-code*) hunchentoot:+http-forbidden+))))
 
 

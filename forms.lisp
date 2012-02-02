@@ -2,6 +2,7 @@
 
 (in-package #:planet-git)
 
+(defparameter *form-errors* (make-hash-table))
 
 (defun compute-real-form-name (symbol)
   "Computes the `real' paramater name \(a string) from the Lisp symbol
@@ -38,7 +39,8 @@ define-rest-handler, lambda list is a list of forms and fields."
 			       (when request-type `(:request-type ,request-type))))))
 		 	 (symbol-value form)))
 	       forms)
-      ,@body))
+     (let ((*form-errors* (make-hash-table)))
+       ,@body)))
 
 
 (defmacro cond-forms (&rest clauses)
@@ -47,8 +49,7 @@ define-rest-handler, lambda list is a list of forms and fields."
        ,@(mapcar (lambda (form)
 		   (let ((form-name (compute-real-form-name (car form))))
 		     `((hunchentoot:post-parameter ,form-name)
-		       (let ((errors (make-hash-table)))
-			 ,@(remove nil
+		       ,@(remove nil
 				   (labels ((validate-field-list (fields)
 					      (destructuring-bind
 						  (parameter-name &key
@@ -58,12 +59,10 @@ define-rest-handler, lambda list is a list of forms and fields."
 								    request-type
 							  validate)
 						  (car fields)
-						(cons `(validate-field ,(symbol-name parameter-name) errors ,@validate)
+						(cons `(validate-field ',parameter-name
+								       *form-errors* ,@validate)
 						      (when (cdr fields) (validate-field-list (cdr fields)))))))
 				  (validate-field-list (symbol-value (car form)))))
-			 (if (= (hash-table-count errors) 0)
-			     (progn ,@(cdr form)
-				    errors)
-			     errors)))))
-		 clauses))
-	  (make-hash-table)))
+			 (when (= (hash-table-count *form-errors*) 0)
+			     (progn ,@(cdr form))))))
+		 clauses))))
