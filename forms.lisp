@@ -3,6 +3,7 @@
 (in-package #:planet-git)
 
 (defparameter *form-errors* (make-hash-table))
+(defparameter *form-data* (make-hash-table))
 
 (defun compute-real-form-name (symbol)
   "Computes the `real' paramater name \(a string) from the Lisp symbol
@@ -39,7 +40,13 @@ define-rest-handler, lambda list is a list of forms and fields."
 			       (when request-type `(:request-type ,request-type))))))
 		 	 (symbol-value form)))
 	       forms)
-     (let ((*form-errors* (make-hash-table)))
+     (let ((*form-errors* (make-hash-table))
+	   (*form-data* (make-hash-table)))
+       ,@(mapcan (lambda (form)
+		 (mapcar (lambda (field)
+			   `(setf (gethash ',(car field) *form-data*) ,(car field)))
+			 (symbol-value form)))
+		forms)
        ,@body)))
 
 
@@ -66,3 +73,33 @@ define-rest-handler, lambda list is a list of forms and fields."
 			 (when (= (hash-table-count *form-errors*) 0)
 			     (progn ,@(cdr form))))))
 		 clauses))))
+
+
+(def-who-macro field-fragment (name description type &key value error)
+  `(:div :class (if ,error "clearfix error" "clearfix")
+	(:label ,description)
+	(:div :class "input"
+	      (:input :type ,type :name ,name
+		      :class (if ,error "error")
+		      :value ,value)
+	      (:span :class "help-inline" (cl-who:str ,error)))))
+
+
+(def-who-macro form-fragment (id fields &key (action "") (class "form-stacked") buttons)
+  `(:form :id ,id :action ,action :method "post" :class ,class
+	  (if (> (hash-table-count *form-errors*) 0)
+	     (cl-who:htm
+	      (:div :class "alert-message error"
+	  	    (:p "Error detected on the page"))))
+	 ,@(mapcar (lambda (field)
+		    (let ((field-name (car field))
+			  (field-title (second field))
+			  (field-type (third field)))
+		      `(field-fragment (string-downcase (symbol-name ,field-name))
+				       ,field-title
+				       ,(string-downcase field-type)
+			:error (gethash ,field-name *form-errors*)
+			:value (gethash ,field-name *form-data*))))
+		  fields)
+	 (:div :class "actions"
+	       ,@buttons)))

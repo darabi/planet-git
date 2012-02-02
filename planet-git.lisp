@@ -169,16 +169,6 @@
 ;;; View
 
 
-
-(def-who-macro field-fragment (name description type &key value error)
-  `(:div :class (if ,error "clearfix error" "clearfix")
-	(:label ,description)
-	(:div :class "input"
-	      (:input :type ,type :name ,name
-		      :class (if ,error "error")
-		      :value ,value)
-	      (:span :class "help-inline" (cl-who:str ,error)))))
-
 (defun home-page ()
  (render-standard-page (:title "Planet Git" :subtitle "a bad clone of github")
     (if (loginp) (cl-who:htm (:a :href "/repository/new" "new repository")))))
@@ -227,24 +217,6 @@
 		(when repositories (repository-fragment repositories))))))
 	(setf (hunchentoot:return-code*) hunchentoot:+http-not-found+))))
 
-(def-who-macro form-fragment (id fields &key (action "") (class "form-stacked") buttons)
-  `(:form :id ,id :action ,action :method "post" :class ,class
-	  (if (> (hash-table-count *form-errors*) 0)
-	     (cl-who:htm
-	      (:div :class "alert-message error"
-	  	    (:p "Error detected on the page"))))
-	 ,@(mapcar (lambda (field)
-		    (let ((field-name (car field))
-			  (field-title (second field))
-			  (field-type (third field)))
-		      `(field-fragment (string-downcase (symbol-name ,field-name))
-				       ,field-title
-				       ,(string-downcase field-type)
-			:error (gethash ,field-name *form-errors*)
-			:error ,field-name)))
-		  fields)
-	 (:div :class "actions"
-	       ,@buttons)))
 
 (def-who-macro* email-item-fragment (user email)
   "this fragment renders a users email address as a list item with a
