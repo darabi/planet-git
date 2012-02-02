@@ -170,19 +170,19 @@
 
 
 (defun home-page ()
- (render-standard-page (:title "Planet Git" :subtitle "a bad clone of github")
+  (render-standard-page (:title "Planet Git" :subtitle "a bad clone of github")
     (if (loginp) (cl-who:htm (:a :href "/repository/new" "new repository")))))
 
 
 (def-who-macro repository-item-fragment (name owner public)
   `(cl-who:htm
-   (:div :class "well project"
-	 (if ,public
-	     (cl-who:htm (:span :class "pubilc" "Public"))
-	     (cl-who:htm (:span :class "private" "Private")))
-	 (:a :href (cl-who:str (url-join ,owner ,name))
-	     (:h3 :class "name"
-		  (cl-who:str ,name))))))
+    (:div :class "well project"
+	  (if ,public
+	      (cl-who:htm (:span :class "pubilc" "Public"))
+	      (cl-who:htm (:span :class "private" "Private")))
+	  (:a :href (cl-who:str (url-join ,owner ,name))
+	      (:h3 :class "name"
+		   (cl-who:str ,name))))))
 
 
 (define-rest-handler (user-page :uri "^/(\\w+)/?$" :args (username)) ()
@@ -193,20 +193,20 @@
 	      (is-current-user (equal (slot-value user 'username)
 				      (when (loginp) (slot-value (loginp) 'username)))))
 	  (render-standard-page (:title (cl-who:str username)
-			  :subtitle (cl-who:str (slot-value user 'fullname))
-			  :page-header ((:img :src (gravatar-url (slot-value user 'email) :size 40))
-					(when is-current-user (cl-who:htm (:a :class "btn primary pull-right"
-								  :href "/repository/new"
-								  "Add Repository"))))
-			  :body-class "span11")
+				 :subtitle (cl-who:str (slot-value user 'fullname))
+				 :page-header ((:img :src (gravatar-url (slot-value user 'email) :size 40))
+					       (when is-current-user (cl-who:htm (:a :class "btn primary pull-right"
+										     :href "/repository/new"
+										     "Add Repository"))))
+				 :body-class "span11")
 	    (let ((repositories (postmodern:select-dao
 				 'repository (:= 'owner-id (slot-value user 'id)))))
 	      (hunchentoot:log-message* hunchentoot:*lisp-warnings-log-level* "Repositories ~a" repositories)
 	      (labels ((repository-fragment (repos)
 			 (let* ((repo (car repos)) (rest (cdr repos))
-			       (visible (or (slot-value repo 'public)
-					    (equal (slot-value user 'username)
-						   (when (loginp) (slot-value (loginp) 'username)))))
+				(visible (or (slot-value repo 'public)
+					     (equal (slot-value user 'username)
+						    (when (loginp) (slot-value (loginp) 'username)))))
 				(public (slot-value repo 'public)))
 			   (hunchentoot:log-message* hunchentoot:*lisp-warnings-log-level* "Repository ~a" repo)
 			   (when (and repo (or visible is-current-user))
@@ -279,6 +279,24 @@ delete button"
 	    (user-settings-page user emails)))
 	(setf (hunchentoot:return-code*) hunchentoot:+http-forbidden+))))
 
+(define-rest-handler (user-page :uri "^/(\\w+)/settings/email/(\\w+)/delete/?$" :args (username email-id)) ()
+  (let*
+      ((user (car (postmodern:select-dao 'login (:= 'username username))))
+       (is-current-user (when user
+			  (equal
+			   (slot-value user 'username)
+			   (when (loginp)
+			     (slot-value (loginp) 'username))))))
+    (if is-current-user
+	(let ((email (car
+		      (postmodern:select-dao 'email
+					     (:and (:= 'id email-id)
+						   (:= 'user-id (slot-value user 'id)))))))
+	  (if email
+	      (postmodern:delete-dao email)
+	      (setf (hunchentoot:return-code*) hunchentoot:+http-not-found+))
+	  (hunchentoot:redirect (url-join (slot-value user 'username) "settings")))
+	(setf (hunchentoot:return-code*) hunchentoot:+http-forbidden+))))
 
 (defun add-ssh-key ()
   (let*
