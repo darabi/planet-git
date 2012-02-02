@@ -99,7 +99,8 @@ define-rest-handler, lambda list is a list of forms and fields."
 				       ,field-title
 				       ,(string-downcase field-type)
 			:error (gethash ,field-name *form-errors*)
-			:value (gethash ,field-name *form-data*))))
+			:value (when (> (hash-table-count *form-errors*) 0)
+				 (gethash ,field-name *form-data*)))))
 		  fields)
 	 (:div :class "actions"
 	       ,@buttons)))
