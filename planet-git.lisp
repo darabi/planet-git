@@ -27,6 +27,7 @@
  (list
   'dispatch-rest-handlers
   (hunchentoot:create-regex-dispatcher "^/?$" 'home-page)
+  (hunchentoot:create-regex-dispatcher "^/[^/]+/$" 'user-page)
   (hunchentoot:create-regex-dispatcher "^/[^/]+/[^/]+/$" 'repository-home-page)
   (hunchentoot:create-regex-dispatcher "^/[^/]+/[^/]+/branch/[^/]+/$" 'repository-branch-page)
   (hunchentoot:create-regex-dispatcher "^/[^/]+/[^/]+/key/[^/]+/$" 'repository-key-page)
@@ -234,29 +235,41 @@ delete button"
 
 
 (def-who-macro* user-settings-page (user emails)
-  (render-standard-page (:title (cl-who:str (slot-value user 'username))
-			 :page-header
-				((:img :src (gravatar-url
-					     (slot-value user 'email)
-					     :size 40))
-				 (:h1 (:a :href (url-join (slot-value user 'username))
-					  (cl-who:str (slot-value user 'username)))
-				      (:small "Settings"))))
-			(labels ((email-fragment (emails)
-				   (let* ((email (car emails)) (rest (cdr emails)))
-				     (email-item-fragment user email)
-				     (when rest (email-fragment rest)))))
-			  (when emails (email-fragment emails)))
-			(form-fragment "add-email"
-				       (('email "Email:" "text"))
-				       :buttons ((:input :type "submit"
-							 :class "btn primary"
-							 :name "email-form-submit"
-							 :value "Add")))))
+		(render-standard-page (:title (cl-who:str (slot-value user 'username))
+				       :page-header
+				       ((:img :src (gravatar-url
+						    (slot-value user 'email)
+						    :size 40))
+					(:h1 (:a :href (url-join (slot-value user 'username))
+						 (cl-who:str (slot-value user 'username)))
+					     (:small "Settings"))))
+		  (form-fragment login-form
+				 (('fullname "Fullname:" "text")
+				  ('email "Email:" "text"))
+				 :buttons ((:input :type "submit"
+						   :class "btn primary"
+						   :name "login-form-submit"
+						   :value "Save")))
+		  (labels ((email-fragment (emails)
+			     (let* ((email (car emails)) (rest (cdr emails)))
+			       (email-item-fragment user email)
+			       (when rest (email-fragment rest)))))
+		    (when emails (email-fragment emails)))
+		  (form-fragment email-form
+				 (('email "Email:" "text"))
+				 :buttons ((:input :type "submit"
+						   :class "btn primary"
+						   :name "email-form-submit"
+						   :value "Add")))))
 
 (define-form
     email-form
     ((email :parameter-type 'string :request-type :post :validate (#'validate-length #'validate-email))))
+
+(define-form
+    login-form
+    ((fullname :parameter-type 'string :request-type :post :validate (#'validate-length))
+     (email :parameter-type 'string :request-type :post :validate (#'validate-length #'validate-email))))
 
 (define-form-handler (user-settings-view :uri "^/(\\w+)/settings/?$" :args (username))
     (email-form)
@@ -302,13 +315,13 @@ delete button"
   (let*
       ((req (hunchentoot:request-uri*))
        (username (cl-ppcre:register-groups-bind (username)
-		 ("^/(\\w+)/settings/add-key?$" req)
-	       username))
+		     ("^/(\\w+)/settings/add-key?$" req)
+		   username))
        (user (car (postmodern:select-dao 'login (:= 'username username))))
        (is-current-user (when user (equal (slot-value user 'username)
 					  (when (loginp) (slot-value (loginp) 'username))))))
-;    (if is-current-user)
-))
+					;    (if is-current-user)
+    ))
 
 
 (defun gravatar-url (email &key (size 80))
@@ -391,7 +404,7 @@ aproprate branch to display."
 					       (:span (cl-who:str "/"))
 					       (cl-who:str (slot-value repository 'name)))
 				   :page-header ((:img :src (gravatar-url
-							    (slot-value user 'email)
+							     (slot-value user 'email)
 							     :size 40))))
 	      (cond
 		(branch
@@ -449,7 +462,7 @@ aproprate branch to display."
 			(:h2 "Under Construction."))
 		  ))
 		(t (setf (hunchentoot:return-code*) hunchentoot:+http-not-found+))))))
-	  (setf (hunchentoot:return-code*) hunchentoot:+http-not-found+))))
+	(setf (hunchentoot:return-code*) hunchentoot:+http-not-found+))))
 
 
 (hunchentoot:define-easy-handler
@@ -510,10 +523,10 @@ aproprate branch to display."
 
 (defun verify-password (login password)
   (let* ((user (car (postmodern:query
-	       (:select 'login.id 'login.password
-			:from 'login
-			:left-join 'email :on (:= 'login.id 'email.user-id)
-			:where (:or (:= 'login.username login) (:= 'email.email login))))))
+		     (:select 'login.id 'login.password
+			      :from 'login
+			      :left-join 'email :on (:= 'login.id 'email.user-id)
+			      :where (:or (:= 'login.username login) (:= 'email.email login))))))
 	 (user-id (car user))
 	 (user-passwd (car (cdr user))))
     (if (compare-password-hash user-passwd password)
@@ -525,12 +538,12 @@ aproprate branch to display."
   "log a user out of a session"
   (let ((user-id (verify-password login password)))
     (if user-id
-      (let ((session (hunchentoot:start-session))
-	    (user (postmodern:get-dao 'login user-id)))
-	(setf (hunchentoot:session-value 'user session) user)
-	)
-      nil
-      )))
+	(let ((session (hunchentoot:start-session))
+	      (user (postmodern:get-dao 'login user-id)))
+	  (setf (hunchentoot:session-value 'user session) user)
+	  )
+	nil
+	)))
 
 
 (defun logout-session ()

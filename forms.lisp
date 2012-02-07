@@ -4,6 +4,7 @@
 
 (defparameter *form-errors* (make-hash-table))
 (defparameter *form-data* (make-hash-table))
+(defparameter *current-form* nil)
 
 (defun compute-real-form-name (symbol)
   "Computes the `real' paramater name \(a string) from the Lisp symbol
@@ -70,9 +71,13 @@ define-rest-handler, lambda list is a list of forms and fields."
 								       *form-errors* ,@validate)
 						      (when (cdr fields) (validate-field-list (cdr fields)))))))
 				  (validate-field-list (symbol-value (car form)))))
-			 (when (= (hash-table-count *form-errors*) 0)
-			     (progn ,@(cdr form))))))
-		 clauses))))
+			 (if (= (hash-table-count *form-errors*) 0)
+			     (progn
+			       ,@(cdr form)
+			       ',(car form))
+			     ',(car form)))))
+		 clauses))
+	  nil))
 
 
 (def-who-macro field-fragment (name description type &key value error)
@@ -85,22 +90,25 @@ define-rest-handler, lambda list is a list of forms and fields."
 	      (:span :class "help-inline" (cl-who:str ,error)))))
 
 
-(def-who-macro form-fragment (id fields &key (action "") (class "form-stacked") buttons)
-  `(:form :id ,id :action ,action :method "post" :class ,class
-	  (if (> (hash-table-count *form-errors*) 0)
-	     (cl-who:htm
-	      (:div :class "alert-message error"
-	  	    (:p "Error detected on the page"))))
-	 ,@(mapcar (lambda (field)
-		    (let ((field-name (car field))
-			  (field-title (second field))
-			  (field-type (third field)))
-		      `(field-fragment (string-downcase (symbol-name ,field-name))
-				       ,field-title
-				       ,(string-downcase field-type)
-			:error (gethash ,field-name *form-errors*)
-			:value (when (> (hash-table-count *form-errors*) 0)
-				 (gethash ,field-name *form-data*)))))
-		  fields)
-	 (:div :class "actions"
-	       ,@buttons)))
+(def-who-macro form-fragment (form fields &key (action "") (class "form-stacked") buttons)
+	       `(:form :id (string-downcase (symbol-name ',form))
+		       :action ,action :method "post" :class ,class
+		       (if (and (eq ',form *current-form*) (> (hash-table-count *form-errors*) 0))
+			   (cl-who:htm
+			    (:div :class "alert-message error"
+				  (:p "Error detected on the page"))))
+		       ,@(mapcar (lambda (field)
+				   (let ((field-name (car field))
+					 (field-title (second field))
+					 (field-type (third field)))
+				     `(field-fragment (string-downcase (symbol-name ,field-name))
+						      ,field-title
+						      ,(string-downcase field-type)
+						      :error (when (eq ',form *current-form*)
+							       (gethash ,field-name *form-errors*))
+						      :value (when (and (eq ',form *current-form*)
+									(> (hash-table-count *form-errors*) 0))
+							       (gethash ,field-name *form-data*)))))
+				 fields)
+		       (:div :class "actions"
+			     ,@buttons)))
