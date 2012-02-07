@@ -281,18 +281,21 @@ delete button"
 			   (when (loginp)
 			     (slot-value (loginp) 'username))))))
     (if is-current-user
-	(progn
-	  (cond-forms
-	   (email-form
-	    (postmodern:insert-dao
-	     (make-instance 'email
-			    :user-id (slot-value (loginp) 'id)
-			    :email email))))
+	(progn (setf *current-form*
+		(cond-forms
+		 (email-form
+		  (postmodern:insert-dao
+		   (make-instance 'email
+				  :user-id (slot-value (loginp) 'id)
+				  :email email)))
+		 (login-form
+		  (postmodern:get-dao 'login (slot-value user 'id)))))
 	  (let ((emails (postmodern:select-dao 'email (:= 'user-id (slot-value user 'id)))))
 	    (user-settings-page user emails)))
 	(setf (hunchentoot:return-code*) hunchentoot:+http-forbidden+))))
 
-(define-rest-handler (user-page :uri "^/(\\w+)/settings/email/(\\w+)/delete/?$" :args (username email-id)) ()
+
+(define-rest-handler (user-email-delete :uri "^/(\\w+)/settings/email/(\\w+)/delete/?$" :args (username email-id)) ()
   (let*
       ((user (car (postmodern:select-dao 'login (:= 'username username))))
        (is-current-user (when user
