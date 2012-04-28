@@ -25,14 +25,15 @@
 
 (setq hunchentoot:*dispatch-table*
  (list
+  'hunchentoot:dispatch-easy-handlers
   'dispatch-rest-handlers
   (hunchentoot:create-regex-dispatcher "^/?$" 'home-page)
   (hunchentoot:create-regex-dispatcher "^/[^/]+/$" 'user-page)
   (hunchentoot:create-regex-dispatcher "^/[^/]+/[^/]+/$" 'repository-home-page)
   (hunchentoot:create-regex-dispatcher "^/[^/]+/[^/]+/branch/[^/]+/$" 'repository-branch-page)
   (hunchentoot:create-regex-dispatcher "^/[^/]+/[^/]+/key/[^/]+/$" 'repository-key-page)
-  'hunchentoot:dispatch-easy-handlers
-  (hunchentoot:create-folder-dispatcher-and-handler "/static/" (resource-path "static"))))
+  (hunchentoot:create-folder-dispatcher-and-handler "/static/" (resource-path "static"))
+  ))
 
 
 ;;; Database
@@ -262,17 +263,13 @@ delete button"
 						   :name "email-form-submit"
 						   :value "Add")))))
 
-(define-form
-    email-form
-    ((email :parameter-type 'string :request-type :post :validate (#'validate-length #'validate-email))))
-
-(define-form
-    login-form
-    ((fullname :parameter-type 'string :request-type :post :validate (#'validate-length))
-     (email :parameter-type 'string :request-type :post :validate (#'validate-length #'validate-email))))
 
 (define-form-handler (user-settings-view :uri "^/(\\w+)/settings/?$" :args (username))
-    (email-form)
+    ((email-form
+      (email :parameter-type 'string :request-type :post :validate (#'validate-length #'validate-email)))
+     (login-form
+      (fullname :parameter-type 'string :request-type :post :validate (#'validate-length))
+       (email :parameter-type 'string :request-type :post :validate (#'validate-length #'validate-email))))
   (let*
       ((user (car (postmodern:select-dao 'login (:= 'username username))))
        (is-current-user (when user
