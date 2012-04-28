@@ -194,13 +194,13 @@
 	(let ((username (slot-value user 'username))
 	      (is-current-user (equal (slot-value user 'username)
 				      (when (loginp) (slot-value (loginp) 'username)))))
-	  (render-standard-page (:title (cl-who:str username)
-				 :subtitle (cl-who:str (slot-value user 'fullname))
-				 :page-header ((:img :src (gravatar-url (slot-value user 'email) :size 40))
-					       (when is-current-user (cl-who:htm (:a :class "btn primary pull-right"
-										     :href "/repository/new"
-										     "Add Repository"))))
-				 :body-class "span11")
+	  (render-user-page
+          (user
+           :extra-header (when is-current-user
+                           (cl-who:htm (:a :class "btn primary pull-right"
+                                           :href "/repository/new"
+                                           "Add Repository")))
+           :body-class "span11")
 	    (let ((repositories (postmodern:select-dao
 				 'repository (:= 'owner-id (slot-value user 'id)))))
 	      (hunchentoot:log-message* hunchentoot:*lisp-warnings-log-level* "Repositories ~a" repositories)
