@@ -245,8 +245,8 @@ delete button"
 						 (cl-who:str (slot-value user 'username)))
 					     (:small "Settings"))))
 		  (form-fragment login-form
-				 (('fullname "Fullname:" "text")
-				  ('email "Email:" "text"))
+				 (('fullname "Fullname:" "text" :value (slot-value user 'fullname))
+				  ('email "Email:" "text" :value (slot-value user 'email)))
 				 :buttons ((:input :type "submit"
 						   :class "btn primary"
 						   :name "login-form-submit"
@@ -269,27 +269,31 @@ delete button"
       (email :parameter-type 'string :request-type :post :validate (#'validate-length #'validate-email)))
      (login-form
       (fullname :parameter-type 'string :request-type :post :validate (#'validate-length))
-       (email :parameter-type 'string :request-type :post :validate (#'validate-length #'validate-email))))
+      (email :parameter-type 'string :request-type :post :validate (#'validate-length #'validate-email))))
   (let*
       ((user (car (postmodern:select-dao 'login (:= 'username username))))
        (is-current-user (when user
-			  (equal
-			   (slot-value user 'username)
-			   (when (loginp)
-			     (slot-value (loginp) 'username))))))
+                          (equal
+                           (slot-value user 'username)
+                           (when (loginp)
+                             (slot-value (loginp) 'username))))))
     (if is-current-user
-	(progn (setf *current-form*
-		(cond-forms
-		 (email-form
-		  (postmodern:insert-dao
-		   (make-instance 'email
-				  :user-id (slot-value (loginp) 'id)
-				  :email email)))
-		 (login-form
-		  (postmodern:get-dao 'login (slot-value user 'id)))))
-	  (let ((emails (postmodern:select-dao 'email (:= 'user-id (slot-value user 'id)))))
-	    (user-settings-page user emails)))
-	(setf (hunchentoot:return-code*) hunchentoot:+http-forbidden+))))
+        (progn
+          (setf *current-form*
+                (cond-forms
+                 (email-form
+                  (postmodern:insert-dao
+                   (make-instance 'email
+                                  :user-id (slot-value (loginp) 'id)
+                                  :email email)))
+                 (login-form
+                  (let ((user (postmodern:get-dao 'login (slot-value user 'id))))
+                    (setf (slot-value user 'fullname) fullname)
+                    (setf (slot-value user 'email) email)
+                    (postmodern:update-dao user)))))
+          (let ((emails (postmodern:select-dao 'email (:= 'user-id (slot-value user 'id)))))
+            (user-settings-page user emails)))
+        (setf (hunchentoot:return-code*) hunchentoot:+http-forbidden+))))
 
 
 (define-rest-handler (user-email-delete :uri "^/(\\w+)/settings/email/(\\w+)/delete/?$" :args (username email-id)) ()

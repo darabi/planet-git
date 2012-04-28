@@ -42,7 +42,7 @@ SYMBOL.  Used in cases where no parameter name is provided."
 
 (defun who-args-filter-keys (arguments)
   (destructuring-bind
-      (parameter-name &key
+        (parameter-name &key
                         real-name
                         parameter-type
                         init-form
@@ -63,28 +63,30 @@ SYMBOL.  Used in cases where no parameter name is provided."
   "description is the higher level description from
 define-rest-handler, lambda list is a list of forms and fields."
   `(define-rest-handler ,description
-       ,(mapcan (lambda (form)
-                  (let ((form-name (car form)))
-                    (mapcar (lambda (field)
-                              (destructuring-bind
-                                  (parameter-name &key
-                                                    real-name
-                                                    parameter-type
-                                                    init-form
-                                                    request-type
-                                   &allow-other-keys)
-                                  field
-                                (remove
-                                 nil
-                                 (concatenate
-                                  'list
-                                  (list (compute-field-symbol form-name parameter-name))
-                                  (when real-name `(:real-name ,real-name))
-                                  (when parameter-type `(:parameter-type ,parameter-type))
-                                  (when init-form `(:init-form ,init-form))
-                                  (when request-type `(:request-type ,request-type))))))
-                            (cdr form))))
-                forms)
+       ,(remove-duplicates ; remove duplicate fields, should be
+                                        ; changed to a more advanced function that
+                                        ; can merge field types like post and get.
+         (mapcan (lambda (form)
+                   (mapcar (lambda (field)
+                             (destructuring-bind
+                                   (parameter-name &key
+                                                   real-name
+                                                   parameter-type
+                                                   init-form
+                                                   request-type
+                                                   &allow-other-keys)
+                                 field
+                               (remove
+                                nil
+                                (concatenate
+                                 'list
+                                 (list parameter-name)
+                                 (when real-name `(:real-name ,real-name))
+                                 (when parameter-type `(:parameter-type ,parameter-type))
+                                 (when init-form `(:init-form ,init-form))
+                                 (when request-type `(:request-type ,request-type))))))
+                           (cdr form)))
+                 forms) :test (lambda (a b) (eq (car a) (car b))))
      (let ((*form-errors* (make-hash-table))
            (*forms* (quote ,forms))
            (*form-data* (make-hash-table)))
@@ -100,57 +102,60 @@ define-rest-handler, lambda list is a list of forms and fields."
   (remove nil
           (labels ((validate-field-list (fields)
                      (destructuring-bind
-                         (parameter-name &key validate &allow-other-keys)
+                           (parameter-name &key validate &allow-other-keys)
                          (car fields)
                        (cons `(validate-field ',parameter-name
                                               *form-errors* ,@validate)
                              (when (cdr fields) (validate-field-list (cdr fields)))))))
-            (validate-field-list (cdr form)))))
+            (validate-field-list fields))))
 
 (defmacro cond-forms (&rest clauses)
   "contans a list of clauses that match form symbol"
-     `(or (cond
-       ,@(mapcar (lambda (form)
-		   (let ((form-name (compute-real-form-name (car form))))
-		     `((hunchentoot:post-parameter ,form-name)
-               (validate-field-list (assoc *forms* ,(car form)))
-			 (if (= (hash-table-count *form-errors*) 0)
-			     (progn
-			       ,@(cdr form)
-			       ',(car form))
-			     ',(car form)))))
-		 clauses))
-	  nil))
+  `(or (cond
+         ,@(mapcar (lambda (form)
+                     (let ((form-name (compute-real-form-name (car form))))
+                       `((hunchentoot:post-parameter ,form-name)
+                         (validate-field-list (assoc-default (quote ,(car form)) *forms*))
+                         (if (= (hash-table-count *form-errors*) 0)
+                             (progn
+                               (hunchentoot:log-message* hunchentoot:*lisp-warnings-log-level* "Form submitted: ~s" ,form-name)
+
+                               ,@(cdr form)
+                               ',(car form))
+                             ',(car form)))))
+                   clauses))
+       nil))
 
 (def-who-macro field-fragment (name description type &key value error)
   `(:div :class (if ,error "clearfix error" "clearfix")
-	(:label ,description)
-	(:div :class "input"
-	      (:input :type ,type :name ,name
-		      :class (if ,error "error")
-		      :value ,value)
-	      (:span :class "help-inline" (cl-who:str ,error)))))
+         (:label ,description)
+         (:div :class "input"
+               (:input :type ,type :name ,name
+                       :class (if ,error "error")
+                       :value ,value)
+               (:span :class "help-inline" (cl-who:str ,error)))))
 
 
 (def-who-macro form-fragment (form fields &key (action "") (class "form-stacked") buttons)
-	       `(:form :id (string-downcase (symbol-name ',form))
-		       :action ,action :method "post" :class ,class
-		       (if (and (eq ',form *current-form*) (> (hash-table-count *form-errors*) 0))
-			   (cl-who:htm
-			    (:div :class "alert-message error"
-				  (:p "Error detected on the page"))))
-		       ,@(mapcar (lambda (field)
-				   (let ((field-name (car field))
-					 (field-title (second field))
-					 (field-type (third field)))
-				     `(field-fragment (string-downcase (symbol-name ,field-name))
-						      ,field-title
-						      ,(string-downcase field-type)
-						      :error (when (eq ',form *current-form*)
-							       (gethash ,field-name *form-errors*))
-						      :value (when (and (eq ',form *current-form*)
-									(> (hash-table-count *form-errors*) 0))
-							       (gethash ,field-name *form-data*)))))
-				 fields)
-		       (:div :class "actions"
-			     ,@buttons)))
+  `(:form :id (string-downcase (symbol-name ',form))
+          :action ,action :method "post" :class ,class
+          (if (and (eq ',form *current-form*) (> (hash-table-count *form-errors*) 0))
+              (cl-who:htm
+               (:div :class "alert-message error"
+                     (:p "Error detected on the page"))))
+          ,@(mapcar (lambda (field)
+                      (destructuring-bind
+                            (field-name field-title field-type &key value error)
+                          field
+                        `(field-fragment (string-downcase (symbol-name ,field-name))
+                                         ,field-title
+                                         ,(string-downcase field-type)
+                                         :error (when (eq ',form *current-form*)
+                                                  (or (gethash ,field-name *form-errors*)
+                                                      ,error))
+                                         :value (if (eq ',form *current-form*)
+                                                    (gethash ,field-name *form-data*)
+                                                    ,value))))
+                    fields)
+          (:div :class "actions"
+                ,@buttons)))
