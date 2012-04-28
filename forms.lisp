@@ -16,6 +16,25 @@ SYMBOL.  Used in cases where no parameter name is provided."
 (defmacro define-form (form-name fields)
   `(defparameter ,form-name ',fields))
 
+(defun who-args-filter-keys (arguments)
+  (destructuring-bind
+      (parameter-name &key
+                        real-name
+                        parameter-type
+                        init-form
+                        request-type
+                        validate)
+      arguments
+    (remove
+     nil
+     (concatenate
+      'list
+      (list parameter-name)
+      (when real-name `(:real-name ,real-name))
+      (when parameter-type `(:parameter-type ,parameter-type))
+      (when init-form `(:init-form ,init-form))
+      (when request-type `(:request-type ,request-type))))))
+
 (defmacro define-form-handler (description forms &body body)
   "description is the higher level description from
 define-rest-handler, lambda list is a list of forms and fields."
