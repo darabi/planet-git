@@ -1,0 +1,18 @@
+* planet-git
+
+This is the stub README.org for the "planet-git" project.
+
+
+** Definitions
+
+Pages, return complete html pages
+Views are view controllers
+Fragments, return html fragments
+
+** Developing
+
+getting the dev server running
+
+sbcl --load develop.lisp
+
+
