@@ -1,3 +1,4 @@
+#!/usr/bin/sbcl --script
 ;; Planet-Git a source code repository manager.
 ;; Copyright (C) 2011-2012 Russell Sim <russell.sim@gmail.com>
 ;;
@@ -16,26 +17,74 @@
 
 ;;;; develop.lisp
 
+
+(load "~/.sbclrc")
+(use-package 'asdf)
+(asdf:oos 'asdf:load-op :quicklisp)
+
 (ql:quickload 'swank)
+(push (probe-file #p"./") asdf:*central-registry*)
 (ql:quickload 'planet-git)
+(use-package 'unix-options)
+
 
 ;; define some parameters for easier update
-(defparameter *httpd-port* 8000)     ; The port Hunchentoot will be listening on
-(defparameter *shutdown-port* 6200)  ; The port SBCL will be listening for shutdown
-                                     ; this port is the same used in /etc/init.d/hunchentoot
-(defparameter *swank-port* 4005)     ; The port used for remote interaction with slime
+(defparameter *config* (py-configparser:make-config))
 
-;; Start the Swank server
-(defparameter *swank-server*
-  (swank:create-server :port *swank-port* :style :spawn :dont-close t))
+;; set some default settings
+(flet ((set-option (section option value)
+         (py-configparser:set-option *config* section option value))
+       (add-section (section)
+         (py-configparser:add-section *config* section)))
+
+  ;; default swank configuration
+  (add-section "swank")
+  (set-option "swank" "enabled" "no")
+
+  ;; default webserver configuration
+  (add-section "webserver")
+  (set-option "webserver" "port" "8000")
+  (set-option "webserver" "shutdown-port" "6200"))
+
+(with-cli-options ()
+    (help &parameters config)
+  (when help
+    (print-usage-summary "Usage:~%~@{~A~%~}"
+                         '(((#\c "config") "FILENAME" "path to the config file")))
+    (quit :unix-status 1))
+  (py-configparser:read-files
+   *config*
+   (list #p"/home/russell/projects/planet-git/config.ini")))
+
+(flet ((get-option (option)
+         (parse-integer
+          (py-configparser:get-option *config* "swank" option))))
+  (defparameter *swank-port* (get-option "port")))
+(defparameter *swank-server* nil)
+
+(defparameter *trueish* (list "yes" "enable" "y" "on" "true"))
+(defun option-in-list (config section option list)
+  "return the value of the OPTION from the SECTION if it's value is in
+the LIST"
+  (let ((opt (py-configparser:get-option config section option)))
+    (flet ((match-list (item)
+             (equal item opt)))
+      (car (remove-if-not #'match-list list)))))
+
+;; Enable SWANK if it's specified in the config file
+(if (option-in-list *config* "swank" "enabled" *trueish*)
+  (setf *swank-server*
+        (swank:create-server :port *swank-port* :style :spawn :dont-close t)))
 
 ;;;
-;;; The Hunchentoot logic goes in here
-;;; this can be just a simple package loading
-;;; calling some methods or it might be something else
+;;; Load Hunchentoot
 ;;;
-;;; The following code is a mere demonstration
-;;;
+(flet ((get-option (option)
+         (parse-integer
+          (py-configparser:get-option *config* "webserver" option))))
+  (defparameter *httpd-port* (get-option "port"))
+  (defparameter *shutdown-port* (get-option "shutdown-port")))
+
 (defparameter *httpd*
   (hunchentoot:start
    (make-instance 'hunchentoot:easy-acceptor
@@ -44,13 +93,14 @@
 (princ *httpd-port*)
 (terpri)
 
-;;; We need a way to actually kill this baby so we
-;;; setup a socket listening on a specific port.
-;;; When we want to stop the lisp process we simply
-;;; telnet to that port as run by the stop section
-;;; of the /etc/init.d/hunchentoot script.
-;;; This thread will block execution until the
-;;; connection comes in on the specified port,
+;;; Reenable the debugger
+(sb-ext:enable-debugger)
+
+;;; We need a way to actually kill this baby so we setup a socket
+;;; listening on a specific port.  When we want to stop the lisp
+;;; process we simply telnet to that port as run by the stop section
+;;; of the /etc/init.d/hunchentoot script.  This thread will block
+;;; execution until the connection comes in on the specified port,
 (let ((socket (make-instance 'sb-bsd-sockets:inet-socket
                              :type :stream :protocol :tcp)))
 
@@ -64,13 +114,9 @@
     (sb-bsd-sockets:socket-close client-socket)
     (sb-bsd-sockets:socket-close socket)))
 
-;;; The following code won't be reached until a connection
-;;; to the shutdown port is made, from here on we clean
-;;; everything up and shutdown SBCL.
-
 ;;; Since we started a hunchentoot acceptor we should stop it
 (print "Stopping Hunchentoot...")
-;(hunchentoot:stop *httpd*)
+(hunchentoot:stop *httpd*)
 
 ;;; Here we go about closing all the running threads
 ;;; including the Swank Server we created.

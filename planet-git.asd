@@ -22,11 +22,13 @@
                #:cl-who
                #:cl-git
                #:postmodern
-	       #:cl-ppcre
-	       #:cl-fad
-	       #:css-lite
-	       #:parenscript
-	       #:md5)
+               #:cl-ppcre
+               #:cl-fad
+               #:css-lite
+               #:parenscript
+               #:py-configparser
+               #:unix-options
+               #:md5)
   :components ((:file "package")
 	       (:file "compat")
 	       (:file "utils")
