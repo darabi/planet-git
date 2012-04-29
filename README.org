@@ -13,9 +13,15 @@
     config.ini file in the root of the project for further details.
 
 *** Git Hook
+    The git-shell.lisp script wraps the git shell command and records
+    the git events.  It needs to be added to the .ssh/authorized_keys
+    of the git user.  This will need to be done manually until this is
+    correctly implemented.
+    
     command="KEY_ID=4
     ./git-shell.lisp",no-port-forwarding,no-agent-forwarding,no-X11-forwarding,no-pty
     ssh-rsa AAAAB... russell@marvin
+
 ** Developing
    Getting the dev server running
 
