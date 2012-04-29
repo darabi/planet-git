@@ -130,6 +130,14 @@ which it is in fact.  Useful for defining syntactic constructs"
 			  (("#branch")
 			   (:float "right")))
 
+             ((".user") nil
+              (("h3")
+               (:display "inline"
+               :vertical-align "top"
+               :font-size "32px"))
+              (("img")
+                (:margin "5px")))
+
 			 ((".login-form") nil
 			  (("ul")
 			   (:list-style-type "none"))

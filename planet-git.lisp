@@ -186,9 +186,24 @@
 ;;; View
 
 
+(def-who-macro user-item-fragment (user)
+  "Create a users description for the front page"
+  `(cl-who:htm
+    (:div :class "well user"
+	  (:a :href (cl-who:str (url-join (slot-value ,user 'username)))
+          (:img :src (gravatar-url
+                       (slot-value user 'email)
+                       :size 40))
+	      (:h3 :class "name"
+		   (cl-who:str (slot-value ,user 'username)))))))
+
+
 (defun home-page ()
-  (render-standard-page (:title "Planet Git" :subtitle "a bad clone of github")
-    (if (loginp) (cl-who:htm (:a :href "/repository/new" "new repository")))))
+  (render-standard-page (:title "Planet Git"
+                                :subtitle "a bad clone of github or gitorious.")
+	    (let ((users (postmodern:select-dao 'login)))
+          (loop :for user :in users
+               :do (user-item-fragment user)))))
 
 
 (def-who-macro repository-item-fragment (name owner public)
