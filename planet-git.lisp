@@ -432,14 +432,12 @@ aproprate branch to display."
 	(cl-git:with-git-repository ((repository-path repository))
 	  (let* ((branches (cl-git:git-reference-listall))
 		 (branch (selected-branch repository branches branch)))
-	    (render-standard-page (:title
+	    (render-user-page (user :title
 				   (cl-who:htm (:a :href (url-join (slot-value user 'username))
 						   (cl-who:str (slot-value user 'username)))
 					       (:span (cl-who:str "/"))
 					       (cl-who:str (slot-value repository 'name)))
-				   :page-header ((:img :src (gravatar-url
-							     (slot-value user 'email)
-							     :size 40))))
+                   :subtitle "")
 	      (cond
 		(branch
 		 (cl-who:htm
