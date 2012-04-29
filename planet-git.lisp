@@ -239,10 +239,10 @@ delete button"
 		(render-standard-page (:title (cl-who:str (slot-value user 'username))
 				       :page-header
 				       ((:img :src (gravatar-url
-						    (slot-value user 'email)
-						    :size 40))
-					(:h1 (:a :href (url-join (slot-value user 'username))
-						 (cl-who:str (slot-value user 'username)))
+                                    (slot-value user 'email)
+                                    :size 40))
+                        (:h1 (:a :href (url-join (slot-value user 'username))
+                                 (cl-who:str (slot-value user 'username)))
 					     (:small "Settings"))))
 		  (form-fragment login-form
 				 (('fullname "Fullname:" "text" :value (slot-value user 'fullname))

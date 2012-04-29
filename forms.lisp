@@ -2,23 +2,18 @@
 
 (in-package #:planet-git)
 
+(defparameter *forms* nil)
 (defparameter *form-errors* (make-hash-table))
 (defparameter *form-data* (make-hash-table))
 (defparameter *current-form* nil)
 
 
-(defclass form () ())
+(defun assoc-default (item alist)
+  (cdr (assoc item alist)))
 
-(defmacro defform (name fields)
-  `(defclass ,name
-       (form)
-       ,(mapcar (lambda (field)
-                  `(,(car field) :initarg ,(cdr field)))
-               fields)))
-
-(defform login-form
-  ((fullname :parameter-type 'string :request-type :post :validate (#'validate-length))
-   (email :parameter-type 'string :request-type :post :validate (#'validate-len))))
+(defmethod validate (f form)
+  (mapcar #'sb-mop:slot-definition-name (sb-mop:compute-slots (class-of f)))
+  )
 
 (defun compute-real-form-name (symbol)
   "Computes the `real' paramater name \(a string) from the Lisp symbol
@@ -58,6 +53,7 @@ SYMBOL.  Used in cases where no parameter name is provided."
       (when parameter-type `(:parameter-type ,parameter-type))
       (when init-form `(:init-form ,init-form))
       (when request-type `(:request-type ,request-type))))))
+
 
 (defmacro define-form-handler (description forms &body body)
   "description is the higher level description from
