@@ -17,4 +17,6 @@
 ;;;; package.lisp
 
 (defpackage #:planet-git
-  (:use #:cl))
+  (:use #:cl)
+  (:export
+   #:create-tables))

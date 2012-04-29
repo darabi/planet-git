@@ -88,16 +88,15 @@
   (:keys id))
 
 
-(postmodern:connect-toplevel "planet_git" "gitui" "oenRTe90u" "localhost")
-
-(unless (postmodern:table-exists-p 'login)
-  (postmodern:execute (postmodern:dao-table-definition 'login)))
-(unless (postmodern:table-exists-p 'email)
-  (postmodern:execute (postmodern:dao-table-definition 'email)))
-(unless (postmodern:table-exists-p 'keys)
-  (postmodern:execute (postmodern:dao-table-definition 'keys)))
-(unless (postmodern:table-exists-p 'repository)
-  (postmodern:execute (postmodern:dao-table-definition 'repository)))
+(defun create-tables ()
+  (unless (postmodern:table-exists-p 'login)
+    (postmodern:execute (postmodern:dao-table-definition 'login)))
+  (unless (postmodern:table-exists-p 'email)
+    (postmodern:execute (postmodern:dao-table-definition 'email)))
+  (unless (postmodern:table-exists-p 'keys)
+    (postmodern:execute (postmodern:dao-table-definition 'keys)))
+  (unless (postmodern:table-exists-p 'repository)
+    (postmodern:execute (postmodern:dao-table-definition 'repository))))
 
 
 ;;; Validation

@@ -44,7 +44,15 @@
   ;; default webserver configuration
   (add-section "webserver")
   (set-option "webserver" "port" "8000")
-  (set-option "webserver" "shutdown-port" "6200"))
+  (set-option "webserver" "shutdown-port" "6200")
+
+  ;; default database configuration
+  (add-section "database")
+  (set-option "database" "database" "planet_git")
+  (set-option "database" "host" "localhost")
+  (set-option "database" "port" "5432")
+  (set-option "database" "username" "gitui")
+  (set-option "database" "password" "oenRTe90u"))
 
 (with-cli-options ()
     (help &parameters config)
@@ -77,6 +85,20 @@ the LIST"
         (swank:create-server :port *swank-port* :style :spawn :dont-close t)))
 
 ;;;
+;;; Configure the database
+;;;
+
+(flet ((get-option (option)
+          (py-configparser:get-option *config* "database" option)))
+  (postmodern:connect-toplevel (get-option "database")
+                               (get-option "username")
+                               (get-option "password")
+                               (get-option "host")
+                               :port (parse-integer (get-option "port"))))
+
+(planet-git:create-tables)
+
+;;;
 ;;; Load Hunchentoot
 ;;;
 (flet ((get-option (option)
@@ -89,9 +111,7 @@ the LIST"
   (hunchentoot:start
    (make-instance 'hunchentoot:easy-acceptor
                   :port *httpd-port*)))
-(princ ";; Hunchentoot started on port ")
-(princ *httpd-port*)
-(terpri)
+(format t ";; Hunchentoot started at port: ~s.~%" *httpd-port*)
 
 ;;; Reenable the debugger
 (sb-ext:enable-debugger)
@@ -101,6 +121,7 @@ the LIST"
 ;;; process we simply telnet to that port as run by the stop section
 ;;; of the /etc/init.d/hunchentoot script.  This thread will block
 ;;; execution until the connection comes in on the specified port,
+(format t ";; Shutdown service started at port: ~s.~%" *shutdown-port*)
 (let ((socket (make-instance 'sb-bsd-sockets:inet-socket
                              :type :stream :protocol :tcp)))
 
