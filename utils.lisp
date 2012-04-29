@@ -14,7 +14,9 @@
 ;; You should have received a copy of the GNU General Public License
 ;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-;;;; package.lisp
+;;;; utils.lisp
 
-(defpackage #:planet-git
-  (:use #:cl))
+(defun assoc-default (item alist &key key test test-not)
+  "return the CDR of the first cons in alist whose car satisfies the
+test, or nil if no such cons is found."
+  (cdr (assoc item alist :key key :test test :test-not test-not)))
