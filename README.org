@@ -4,17 +4,17 @@ This is the stub README.org for the "planet-git" project.  The whole
 project could be described as a stub.  There is still much work to do.
 Be aware this is the first project I ever done with Common Lisp, so if
 your eyes begin to bleed it's not my fault. You have been warned.
-
+n
 
 ** Definitions
 
 Pages, return complete html pages
 Views are view controllers
-Fragments, return html fragments
+Fragments, return html fragments, parts of pages
 
 ** Developing
 
 getting the dev server running
 
-sbcl --load develop.lisp
+./develop.lisp -c ./config.ini
 
