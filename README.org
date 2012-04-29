@@ -12,6 +12,10 @@
     Configuration is done with a ini file.  Please look to the
     config.ini file in the root of the project for further details.
 
+*** Git Hook
+    command="KEY_ID=4
+    ./git-shell.lisp",no-port-forwarding,no-agent-forwarding,no-X11-forwarding,no-pty
+    ssh-rsa AAAAB... russell@marvin
 ** Developing
    Getting the dev server running
 
