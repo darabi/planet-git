@@ -1,20 +1,24 @@
 * planet-git
 
-This is the stub README.org for the "planet-git" project.  The whole
-project could be described as a stub.  There is still much work to do.
-Be aware this is the first project I ever done with Common Lisp, so if
-your eyes begin to bleed it's not my fault. You have been warned.
-n
-
-** Definitions
-
-Pages, return complete html pages
-Views are view controllers
-Fragments, return html fragments, parts of pages
+  This is the stub README.org for the "planet-git" project.  The whole
+  project could be described as a stub.  There is still much work to do.
+  Be aware this is the first project I ever done with Common Lisp, so if
+  your eyes begin to bleed it's not my fault. You have been warned.
+** Installation
+   Currently this application isn't ready for any kind of real
+   deployment.  So there will only be configuration instructions until
+   this changes.
+*** Configuration
+    Configuration is done with a ini file.  Please look to the
+    config.ini file in the root of the project for further details.
 
 ** Developing
+   Getting the dev server running
 
-getting the dev server running
+   ./develop.lisp -c ./config.ini
 
-./develop.lisp -c ./config.ini
+*** Definitions
 
+    Pages, return complete html pages
+    Views are view controllers
+    Fragments, return html fragments, parts of pages
