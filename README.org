@@ -1,6 +1,9 @@
 * planet-git
 
-This is the stub README.org for the "planet-git" project.
+This is the stub README.org for the "planet-git" project.  The whole
+project could be described as a stub.  There is still much work to do.
+Be aware this is the first project I ever done with Common Lisp, so if
+your eyes begin to bleed it's not my fault. You have been warned.
 
 
 ** Definitions
@@ -14,5 +17,4 @@ Fragments, return html fragments
 getting the dev server running
 
 sbcl --load develop.lisp
-
 
