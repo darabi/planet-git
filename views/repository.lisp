@@ -87,7 +87,7 @@
        (is-current-user (when user (equal (slot-value user 'username)
 					  (when (loginp) (slot-value (loginp) 'username))))))
     (if (and visible user repository)
-	(cl-git:with-git-repository ((repository-path repository))
+	(cl-git:with-git-repository ((repository-real-path repository))
 	  (let* ((branches (cl-git:git-reference-listall))
 		 (branch (selected-branch repository branches branch)))
 	    (render-user-page (user :title

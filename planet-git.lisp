@@ -78,12 +78,18 @@
 (defclass repository ()
   ((id :col-type serial :accessor id)
    (owner-id :col-type integer :initarg :owner-id)
-   (name :col-type string :initarg :name)
-   (path :col-type string :initarg :path)
-   (branch :col-type (or postmodern:db-null string) :initarg :branch)
-   (public :col-type boolean :initarg :public))
+   (name :col-type string :initarg :name :accessor repository-name)
+   (path :col-type string :initarg :path :accessor repository-path)
+   (branch :col-type (or postmodern:db-null string) :initarg :branch
+           :accessor repository-branch)
+   (public :col-type boolean :initarg :public :accessor repository-public))
   (:metaclass postmodern:dao-class)
   (:keys id))
+
+
+(defmethod repository-real-path ((repo repository))
+  (merge-pathnames (slot-value repo 'path)
+		   *repository-directory*))
 
 
 (defun create-tables ()
@@ -99,9 +105,6 @@
 
 ;;; Path
 
-(defun repository-path (repository)
-  (merge-pathnames (slot-value repository 'path)
-		   *repository-directory*))
 
 (defun remove-ref-path (ref &optional (substring "refs/heads/"))
   "remove a substring from the start of a string"
