@@ -60,6 +60,11 @@
 		(unless (= (length validation-error) 0)
 		  (setf (gethash lname lerrors) validation-error))))))
 
+
+;;
+;; The def-validator and uses of this macro is deprecated.
+;;
+
 (defmacro def-validator (name () &body body)
   `(defun ,name ()
      (let ((errors (make-hash-table)))

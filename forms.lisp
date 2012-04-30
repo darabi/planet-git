@@ -104,32 +104,37 @@ define-rest-handler, lambda list is a list of forms and fields."
 
 
 (defun validate-field-list (fields)
-  (remove nil
-          (labels ((validate-field-list (fields)
-                     (destructuring-bind
-                           (parameter-name &key validate &allow-other-keys)
-                         (car fields)
-                       (cons `(validate-field ',parameter-name
-                                              *form-errors* ,@validate)
-                             (when (cdr fields) (validate-field-list (cdr fields)))))))
-            (validate-field-list fields))))
+  (remove
+   nil
+   (labels ((validate-field-list (fields)
+              (destructuring-bind
+                    (parameter-name &key validate &allow-other-keys)
+                  (car fields)
+                (cons `(validate-field ',parameter-name
+                                       *form-errors* ,@validate)
+                      (when (cdr fields) (validate-field-list (cdr fields)))))))
+     (validate-field-list fields))))
+
 
 (defmacro cond-forms (&rest clauses)
   "contans a list of clauses that match form symbol"
-  `(or (cond
-         ,@(mapcar (lambda (form)
-                     (let ((form-name (compute-real-form-name (car form))))
-                       `((hunchentoot:post-parameter ,form-name)
-                         (validate-field-list (assoc-default (quote ,(car form)) *forms*))
-                         (if (= (hash-table-count *form-errors*) 0)
-                             (progn
-                               (hunchentoot:log-message* hunchentoot:*lisp-warnings-log-level* "Form submitted: ~s" ,form-name)
-
-                               ,@(cdr form)
-                               ',(car form))
-                             ',(car form)))))
-                   clauses))
-       nil))
+  `(or
+    (cond
+      ,@(mapcar
+         (lambda (form)
+           (let ((form-name (compute-real-form-name (car form))))
+             `((hunchentoot:post-parameter ,form-name)
+               (validate-field-list (assoc-default (quote ,(car form)) *forms*))
+               (if (= (hash-table-count *form-errors*) 0)
+                   (progn
+                     (hunchentoot:log-message*
+                      hunchentoot:*lisp-warnings-log-level*
+                      "Form submitted: ~s" ,form-name)
+                     ,@(cdr form)
+                     ',(car form))
+                   ',(car form)))))
+         clauses))
+    nil))
 
 (def-who-macro field-fragment (name description type &key value error)
   `(:div :class (if ,error "clearfix error" "clearfix")
@@ -141,26 +146,29 @@ define-rest-handler, lambda list is a list of forms and fields."
                (:span :class "help-inline" (cl-who:str ,error)))))
 
 
-(def-who-macro form-fragment (form fields &key (action "") (class "form-stacked") buttons)
+(def-who-macro form-fragment
+    (form fields &key (action "") (class "form-stacked") buttons)
   `(:form :id (string-downcase (symbol-name ',form))
           :action ,action :method "post" :class ,class
-          (if (and (eq ',form *current-form*) (> (hash-table-count *form-errors*) 0))
+          (if (and (eq ',form *current-form*)
+                   (> (hash-table-count *form-errors*) 0))
               (cl-who:htm
                (:div :class "alert-message error"
                      (:p "Error detected on the page"))))
-          ,@(mapcar (lambda (field)
-                      (destructuring-bind
-                            (field-name field-title field-type &key value error)
-                          field
-                        `(field-fragment (string-downcase (symbol-name ,field-name))
-                                         ,field-title
-                                         ,(string-downcase field-type)
-                                         :error (when (eq ',form *current-form*)
-                                                  (or (gethash ,field-name *form-errors*)
-                                                      ,error))
-                                         :value (if (eq ',form *current-form*)
-                                                    (gethash ,field-name *form-data*)
-                                                    ,value))))
-                    fields)
+          ,@(mapcar
+             (lambda (field)
+               (destructuring-bind
+                     (field-name field-title field-type &key value error)
+                   field
+                 `(field-fragment (string-downcase (symbol-name ,field-name))
+                                  ,field-title
+                                  ,(string-downcase field-type)
+                                  :error (when (eq ',form *current-form*)
+                                           (or (gethash ,field-name *form-errors*)
+                                               ,error))
+                                  :value (if (eq ',form *current-form*)
+                                             (gethash ,field-name *form-data*)
+                                             ,value))))
+             fields)
           (:div :class "actions"
                 ,@buttons)))
