@@ -16,7 +16,12 @@
 
 ;;;; utils.lisp
 
+(in-package #:planet-git)
+
+
 (defun assoc-default (item alist &key key test test-not)
   "return the CDR of the first cons in alist whose car satisfies the
 test, or nil if no such cons is found."
-  (cdr (assoc item alist :key key :test test :test-not test-not)))
+  (if test
+      (cdr (assoc item alist :key key :test test))
+      (cdr (assoc item alist :key key :test-not test-not))))
