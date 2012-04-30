@@ -19,4 +19,5 @@
 (defpackage #:planet-git
   (:use #:cl)
   (:export
+   #:*repository-directory*
    #:create-tables))

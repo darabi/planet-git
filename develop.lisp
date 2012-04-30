@@ -99,6 +99,15 @@ the LIST"
 (planet-git:create-tables)
 
 ;;;
+;;; Configure Planet-Git
+;;;
+
+(flet ((get-option (option)
+          (py-configparser:get-option *config* "planet-git" option)))
+  (setq planet-git:*repository-directory* (pathname (get-option "repository-path"))))
+
+
+;;;
 ;;; Load Hunchentoot
 ;;;
 (flet ((get-option (option)
@@ -116,11 +125,13 @@ the LIST"
 ;;; Reenable the debugger
 (sb-ext:enable-debugger)
 
-;;; We need a way to actually kill this baby so we setup a socket
-;;; listening on a specific port.  When we want to stop the lisp
-;;; process we simply telnet to that port as run by the stop section
-;;; of the /etc/init.d/hunchentoot script.  This thread will block
-;;; execution until the connection comes in on the specified port,
+(defun escape-orbit ()
+  (dolist (thread (sb-thread:list-all-threads))
+    (unless (equal sb-thread:*current-thread* thread)
+      (sb-thread:terminate-thread thread))))
+
+;;; This thread will block execution until the connection comes in on
+;;; the specified port,
 (format t ";; Shutdown service started at port: ~s.~%" *shutdown-port*)
 (let ((socket (make-instance 'sb-bsd-sockets:inet-socket
                              :type :stream :protocol :tcp)))
@@ -139,10 +150,6 @@ the LIST"
 (print "Stopping Hunchentoot...")
 (hunchentoot:stop *httpd*)
 
-;;; Here we go about closing all the running threads
-;;; including the Swank Server we created.
-(dolist (thread (sb-thread:list-all-threads))
-  (unless (equal sb-thread:*current-thread* thread)
-    (sb-thread:terminate-thread thread)))
+(escape-orbit)
 (sleep 1)
 (sb-ext:quit)

@@ -28,7 +28,7 @@
 
 ;;; Global Config
 
-(defparameter *repository-directory* #p"/home/russell/tmp/planet-git/")
+(defparameter *repository-directory* #p"/tmp/")
 
 ;;; Webserver
 
