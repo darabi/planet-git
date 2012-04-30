@@ -206,6 +206,7 @@ which it is in fact.  Useful for defining syntactic constructs"
 			       (:div :class ,body-class
 			       ,@body)))))))
 
+
 (defmacro render-user-page ((user &key title subtitle (body-class "span14") extra-header) &body body)
   `(render-standard-page
        (:body-class ,body-class
