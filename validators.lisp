@@ -53,12 +53,13 @@
 
 (defmacro validate-field (fieldname errors &rest validators)
   `(let ((lname ,fieldname)
-	 (lerrors ,errors))
-     (loop for x in (list ,@validators)
-	   until (gethash lname lerrors)
-	   do (let ((validation-error (funcall x (string-downcase (string lname)))))
-		(unless (= (length validation-error) 0)
-		  (setf (gethash lname lerrors) validation-error))))))
+         (lerrors ,errors))
+     (loop
+        :for x :in (list ,@validators)
+        :until (gethash lname lerrors)
+        :do (let ((validation-error (funcall x (string-downcase (string lname)))))
+              (unless (= (length validation-error) 0)
+                (setf (gethash lname lerrors) validation-error))))))
 
 
 ;;
