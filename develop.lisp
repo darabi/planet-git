@@ -89,7 +89,8 @@ the LIST"
 ;;;
 
 (flet ((get-option (option)
-          (py-configparser:get-option *config* "database" option)))
+          (coerce (py-configparser:get-option *config* "database" option)
+                  'simple-string)))
   (postmodern:connect-toplevel (get-option "database")
                                (get-option "username")
                                (get-option "password")
