@@ -96,12 +96,16 @@ delete button"
 						   :value "Add")))))
 
 
-(define-form-handler (user-settings-view :uri "^/(\\w+)/settings/?$" :args (username))
+(define-form-handler (user-settings-view :uri "^/(\\w+)/settings/?$"
+                                         :args (username))
     ((email-form
-      (email :parameter-type 'string :request-type :post :validate (#'validate-length #'validate-email)))
+      (email :parameter-type 'string :request-type :post
+             :validate (#'validate-length #'validate-email)))
      (login-form
-      (fullname :parameter-type 'string :request-type :post :validate (#'validate-length))
-      (email :parameter-type 'string :request-type :post :validate (#'validate-length #'validate-email))))
+      (fullname :parameter-type 'string :request-type :post
+                :validate (#'validate-length))
+      (email :parameter-type 'string :request-type :post
+             :validate (#'validate-length #'validate-email))))
   (let*
       ((user (car (postmodern:select-dao 'login (:= 'username username))))
        (is-current-user (when user
