@@ -97,23 +97,27 @@ define-rest-handler, lambda list is a list of forms and fields."
            (*form-data* (make-hash-table)))
        ,@(mapcan (lambda (form)
                    (mapcar (lambda (field)
-                             `(setf (gethash ',(car field) *form-data*) ,(car field)))
+                             `(setf (gethash ',(car field) *form-data*)
+                                    ,(car field)))
                            (cdr form)))
                  forms)
        ,@body)))
 
 
 (defun validate-field-list (fields)
-  (remove
-   nil
-   (labels ((validate-field-list (fields)
-              (destructuring-bind
-                    (parameter-name &key validate &allow-other-keys)
-                  (car fields)
-                (cons `(validate-field ',parameter-name
-                                       *form-errors* ,@validate)
-                      (when (cdr fields) (validate-field-list (cdr fields)))))))
-     (validate-field-list fields))))
+  "Validate a list of FIELDS as a side-effect add any errors that are
+found to the global variable *FIELD-ERRORS*."
+  (mapcar #'eval
+          (remove
+           nil
+           (labels ((%validate-field-list (fields)
+                      (destructuring-bind
+                            (parameter-name &key validate &allow-other-keys)
+                          (car fields)
+                        (cons `(validate-field ',parameter-name
+                                               *form-errors* ,@validate)
+                              (when (cdr fields) (%validate-field-list (cdr fields)))))))
+             (%validate-field-list fields)))))
 
 
 (defmacro cond-forms (&rest clauses)
