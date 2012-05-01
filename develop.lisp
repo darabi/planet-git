@@ -17,6 +17,8 @@
 
 ;;;; develop.lisp
 
+;;; Reenable the debugger
+(sb-ext:enable-debugger)
 
 (load "~/.sbclrc")
 (use-package 'asdf)
@@ -24,6 +26,7 @@
 
 (ql:quickload 'swank)
 (push (probe-file #p"./") asdf:*central-registry*)
+
 (ql:quickload 'planet-git)
 (use-package 'unix-options)
 
@@ -122,9 +125,6 @@ the LIST"
    (make-instance 'hunchentoot:easy-acceptor
                   :port *httpd-port*)))
 (format t ";; Hunchentoot started at port: ~s.~%" *httpd-port*)
-
-;;; Reenable the debugger
-(sb-ext:enable-debugger)
 
 (defun escape-orbit ()
   (dolist (thread (sb-thread:list-all-threads))
