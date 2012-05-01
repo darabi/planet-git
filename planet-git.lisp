@@ -99,6 +99,10 @@
 (defmethod user-primary-email ((user login))
   (car (postmodern:select-dao 'email (:and (:= 'user-id (id user)) (:= 'primary t)))))
 
+(defmethod user-gravatar-url ((user login) &key (size 80))
+  "return the url to a USER's gravatar, an optional SIZE keyword can
+be used to set the requested size."
+  (gravatar-url (email-address (user-primary-email user)) :size size))
 
 (defun create-tables ()
   (unless (postmodern:table-exists-p 'login)
@@ -127,6 +131,8 @@
 
 
 (defun gravatar-url (email &key (size 80))
+  "return the gravatar url for an EMAIL address, an optional SIZE
+keyword can be used to set the requested size."
     (concatenate 'string
 		 "http://www.gravatar.com/avatar/"
 		 (format nil "~(~{~2,'0X~}~)"

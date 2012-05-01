@@ -70,9 +70,7 @@ delete button"
 (def-who-macro* user-settings-page (user emails)
 		(render-standard-page (:title (cl-who:str (slot-value user 'username))
 				       :page-header
-				       ((:img :src (gravatar-url
-                                    (slot-value user 'email)
-                                    :size 40))
+				       ((:img :src (user-gravatar-url user :size 40))
                         (:h1 (:a :href (url-join (slot-value user 'username))
                                  (cl-who:str (slot-value user 'username)))
 					     (:small "Settings"))))

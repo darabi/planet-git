@@ -212,9 +212,7 @@ which it is in fact.  Useful for defining syntactic constructs"
        (:body-class ,body-class
         :title (cl-who:str (slot-value ,user 'username))
         :page-header
-        ((:img :src (gravatar-url
-                     (email-address (user-primary-email ,user))
-                     :size 40))
+        ((:img :src (users-gravatar-url ,user :size 40))
          (:h1 ,(or title `(:a :href (url-join (slot-value ,user 'username))
                            (cl-who:str (slot-value ,user 'username))))
          (:small ,(or subtitle `(cl-who:str (slot-value ,user 'fullname)))))
