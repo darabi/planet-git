@@ -140,6 +140,29 @@ found to the global variable *FIELD-ERRORS*."
          clauses))
     nil))
 
+
+(defmacro if-valid-form (then &optional else)
+  "if the first form defined is valid, the values returned by the
+then-form; otherwise, the values returned by the else-form."
+  `(let ((*current-form* (caar *forms*)))
+
+     ;; TODO validate-filed-list should be changed to return the count of
+     ;; the errors
+     (when (hunchentoot:post-parameter (compute-real-form-name (caar *forms*)))
+       (validate-field-list (cdar *forms*)))
+
+     (hunchentoot:log-message*
+      hunchentoot:*lisp-warnings-log-level*
+      "Form errors: ~s" (hash-table-count *form-errors*))
+     (if (and (hunchentoot:post-parameter (compute-real-form-name (caar *forms*)))
+              (= (hash-table-count *form-errors*) 0))
+         (progn
+           (hunchentoot:log-message*
+            hunchentoot:*lisp-warnings-log-level*
+            "Form submitted: ~s" (caar *forms*))
+           ,then)
+         ,else)))
+
 (def-who-macro field-fragment (name description type &key value error)
   `(:div :class (if ,error "clearfix error" "clearfix")
          (:label ,description)
