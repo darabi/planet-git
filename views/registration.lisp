@@ -19,153 +19,35 @@
 (in-package #:planet-git)
 
 
-(hunchentoot:define-easy-handler
-    (register-page :uri "/register")
-    ((fullname :parameter-type 'string :request-type :post)
-     (username :parameter-type 'string :request-type :post)
-     (password :parameter-type 'string :request-type :post)
-     (cpassword :parameter-type 'string :request-type :post)
-     (email :parameter-type 'string :request-type :post))
-  (let ((errors (validate-registration)))
-    (if (and (= (hash-table-count errors) 0)
-	     (eq (hunchentoot:request-method*) :post))
-	(progn
-	  (let ((login (postmodern:insert-dao
-			(make-instance 'login
-				       :fullname fullname
-				       :username username
-				       :email email
-				       :password password)))
-		(session (hunchentoot:start-session)))
-	    (postmodern:insert-dao
-	     (make-instance 'email
-			    :user-id (slot-value login 'id)
-			    :email email
-			    :rank 0))
-	    (setf (hunchentoot:session-value 'user session) login)
-	    (hunchentoot:redirect (url-join (slot-value login 'username)))))
-	(render-standard-page (:title "Register")
-	  (:form :action "" :method "post"
-		 (if (> (hash-table-count errors) 0)
-		     (cl-who:htm
-		      (:div :class "alert-message error"
-			    (:p "Error detected on the page"))))
-		 (field-fragment "fullname" "Fullname:" "text"
-			:value fullname
-			:error (gethash 'fullname errors))
-		 (field-fragment "username" "Username:" "text"
-			:value username
-			:error (gethash 'username errors))
-		 (field-fragment "email" "Email:" "text"
-			:value email
-			:error (gethash 'email errors))
-		 (field-fragment "password" "Password:" "text"
-			:error (gethash 'password errors))
-		 (field-fragment "cpassword" "confirm passwd" "text"
-			:error (gethash 'cpassword errors))
-		 (:div :class "actions"
-		       (:input :class "btn primary" :type "submit"
-			       :name "register" :value "Register"))))
-	  )))
-
-
-(hunchentoot:define-easy-handler
-    (register-page :uri "/register")
-    ((fullname :parameter-type 'string :request-type :post)
-     (username :parameter-type 'string :request-type :post)
-     (password :parameter-type 'string :request-type :post)
-     (cpassword :parameter-type 'string :request-type :post)
-     (email :parameter-type 'string :request-type :post))
-  (let ((errors (validate-registration)))
-    (if (and (= (hash-table-count errors) 0)
-	     (eq (hunchentoot:request-method*) :post))
-	(progn
-	  (let ((login (postmodern:insert-dao
-			(make-instance 'login
-				       :fullname fullname
-				       :username username
-				       :email email
-				       :password password)))
-		(session (hunchentoot:start-session)))
-	    (postmodern:insert-dao
-	     (make-instance 'email
-			    :user-id (slot-value login 'id)
-			    :email email
-			    :rank 0))
-	    (setf (hunchentoot:session-value 'user session) login)
-	    (hunchentoot:redirect (url-join (slot-value login 'username)))))
-	(render-standard-page (:title "Register")
-	  (:form :action "" :method "post"
-		 (if (> (hash-table-count errors) 0)
-		     (cl-who:htm
-		      (:div :class "alert-message error"
-			    (:p "Error detected on the page"))))
-		 (field-fragment "fullname" "Fullname:" "text"
-			:value fullname
-			:error (gethash 'fullname errors))
-		 (field-fragment "username" "Username:" "text"
-			:value username
-			:error (gethash 'username errors))
-		 (field-fragment "email" "Email:" "text"
-			:value email
-			:error (gethash 'email errors))
-		 (field-fragment "password" "Password:" "text"
-			:error (gethash 'password errors))
-		 (field-fragment "cpassword" "confirm passwd" "text"
-			:error (gethash 'cpassword errors))
-		 (:div :class "actions"
-		       (:input :class "btn primary" :type "submit"
-			       :name "register" :value "Register"))))
-	  )))
-
-
-(hunchentoot:define-easy-handler
-    (register-page :uri "/register")
-    ((fullname :parameter-type 'string :request-type :post)
-     (username :parameter-type 'string :request-type :post)
-     (password :parameter-type 'string :request-type :post)
-     (cpassword :parameter-type 'string :request-type :post)
-     (email :parameter-type 'string :request-type :post))
-  (let ((errors (validate-registration)))
-    (if (and (= (hash-table-count errors) 0)
-	     (eq (hunchentoot:request-method*) :post))
-	(progn
-	  (let ((login (postmodern:insert-dao
-			(make-instance 'login
-				       :fullname fullname
-				       :username username
-				       :email email
-				       :password password)))
-		(session (hunchentoot:start-session)))
-	    (postmodern:insert-dao
-	     (make-instance 'email
-			    :user-id (slot-value login 'id)
-			    :email email
-			    :rank 0))
-	    (setf (hunchentoot:session-value 'user session) login)
-	    (hunchentoot:redirect (url-join (slot-value login 'username)))))
-	(render-standard-page (:title "Register")
-	  (:form :action "" :method "post"
-		 (if (> (hash-table-count errors) 0)
-		     (cl-who:htm
-		      (:div :class "alert-message error"
-			    (:p "Error detected on the page"))))
-		 (field-fragment "fullname" "Fullname:" "text"
-			:value fullname
-			:error (gethash 'fullname errors))
-		 (field-fragment "username" "Username:" "text"
-			:value username
-			:error (gethash 'username errors))
-		 (field-fragment "email" "Email:" "text"
-			:value email
-			:error (gethash 'email errors))
-		 (field-fragment "password" "Password:" "text"
-			:error (gethash 'password errors))
-		 (field-fragment "cpassword" "confirm passwd" "text"
-			:error (gethash 'cpassword errors))
-		 (:div :class "actions"
-		       (:input :class "btn primary" :type "submit"
-			       :name "register" :value "Register")))))))
+(define-form-handler (register-page :uri "^/register$")
+    ((new-user-form
+      (fullname :parameter-type 'string :request-type :post
+                :validate (#'validate-length))
+      (username :parameter-type 'string :request-type :post
+                :validate (#'validate-length
+                           #'validate-username
+                           #'validate-username-exists))
+      (password :parameter-type 'string :request-type :post
+                :validate (#'validate-length))
+      (cpassword :parameter-type 'string :request-type :post
+                 :validate (#'validate-password))
+      (email :parameter-type 'string :request-type :post
+             :validate (#'validate-length #'validate-email))))
+  (if-valid-form
+   (let ((login (create-user username fullname password email))
+         (session (hunchentoot:start-session)))
+     (setf (hunchentoot:session-value 'user session) login)
+     (hunchentoot:redirect (url-join (user-username login))))
+   (render-standard-page (:title "Register")
+     (form-fragment
+      new-user-form
+      (('fullname "Fullname:" "text")
+       ('username "Username:" "text")
+       ('email "Email:" "text")
+       ('password "Password:" "text")
+       ('cpassword "confirm passwd" "text"))
+      :buttons ((:input :class "btn primary" :type "submit"
+                        :name "new-user-form-submit" :value "Register"))))))
 
 
 (hunchentoot:define-easy-handler

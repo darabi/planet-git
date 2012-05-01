@@ -53,25 +53,29 @@
 ;;; Database
 (defclass login ()
   ((id :col-type serial :accessor id)
-   (fullname :col-type string :initarg :fullname)
-   (username :col-type string :initarg :username)
-   (email :col-type string :initarg :email)
-   (password :col-type string :initarg :password))
+   (fullname :col-type string :initarg :fullname :accessor user-fullname)
+   (username :col-type string :initarg :username :accessor user-username)
+   (password :col-type string :initarg :password :accessor user-password))
   (:metaclass postmodern:dao-class)
   (:keys id))
 
 (defclass email ()
   ((id :col-type serial :accessor id)
-   (user-id :col-type integer :initarg :user-id)
-   (email :col-type string :initarg :email))
+   (user-id :col-type integer :initarg :user-id :accessor email-user-id)
+   (email :col-type string :initarg :email :accessor email-address)
+   (primary :col-type boolean :initform nil
+            :initarg :primary :accessor email-primary)
+   (verified :col-type boolean  :initform nil
+             :initarg :verified :accessor email-verified))
   (:metaclass postmodern:dao-class)
   (:keys id user-id))
 
 (defclass keys ()
   ((id :col-type serial :accessor id)
-   (user-id :col-type integer :initarg :user-id)
-   (title :col-type string :initarg :title)
-   (key :col-type string :initarg :email))
+   (user-id :col-type integer :initarg :user-id :accessor keys-user-id)
+   (title :col-type string :initarg :title :accessor key-title)
+   (type :col-type string :initarg :type :accessor key-type)
+   (key :col-type string :initarg :key :accessor key-value))
   (:metaclass postmodern:dao-class)
   (:keys id user-id))
 
@@ -90,6 +94,10 @@
 (defmethod repository-real-path ((repo repository))
   (merge-pathnames (slot-value repo 'path)
 		   *repository-directory*))
+
+
+(defmethod user-primary-email ((user login))
+  (car (postmodern:select-dao 'email (:and (:= 'user-id (id user)) (:= 'primary t)))))
 
 
 (defun create-tables ()
@@ -211,3 +219,20 @@ aproprate branch to display."
 		    :path (namestring relative-path)
 		    :public public))
     (cl-git:ensure-git-repository-exist path t)))
+
+
+(defun create-user (username fullname password email)
+  "Create a new user from the attributes USERNAME FULLNAME PASSWORD
+and set the primary email address to EMAIL"
+  (postmodern:with-transaction ()
+    (let ((login (postmodern:insert-dao
+                  (make-instance 'login
+                                 :fullname fullname
+                                 :username username
+                                 :password password))))
+      (postmodern:insert-dao
+       (make-instance 'email
+                      :user-id (id login)
+                      :email email
+                      :primary t))
+      login)))

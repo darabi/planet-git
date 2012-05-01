@@ -213,7 +213,7 @@ which it is in fact.  Useful for defining syntactic constructs"
         :title (cl-who:str (slot-value ,user 'username))
         :page-header
         ((:img :src (gravatar-url
-                     (slot-value ,user 'email)
+                     (email-address (user-primary-email ,user))
                      :size 40))
          (:h1 ,(or title `(:a :href (url-join (slot-value ,user 'username))
                            (cl-who:str (slot-value ,user 'username))))

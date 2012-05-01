@@ -25,7 +25,7 @@
     (:div :class "well user"
 	  (:a :href (cl-who:str (url-join (slot-value ,user 'username)))
           (:img :src (gravatar-url
-                       (slot-value user 'email)
+                       (email-address (user-primary-email ,user))
                        :size 40))
 	      (:h3 :class "name"
 		   (cl-who:str (slot-value ,user 'username)))))))

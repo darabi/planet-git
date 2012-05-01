@@ -33,36 +33,37 @@ DEFINE-REST-HANDLER.")
       description
     `(progn
        ,@(when uri
-           (list
-            (with-rebinding (uri)
-              `(progn
-                 (setq *rest-handler-alist*
-                       (delete-if (lambda (list)
-                                    (and (or (equal ,uri (first list))
-                                             (eq ',name (third list)))
-                                         (or (eq ,acceptor-names t)
-                                             (intersection ,acceptor-names
-                                                           (second list)))))
-                                  *rest-handler-alist*))
-                 (push (list ,uri ,acceptor-names ',name) *rest-handler-alist*)))))
+               (list
+                (with-rebinding (uri)
+                  `(progn
+                     (setq *rest-handler-alist*
+                           (delete-if (lambda (list)
+                                        (and (or (equal ,uri (first list))
+                                                 (eq ',name (third list)))
+                                             (or (eq ,acceptor-names t)
+                                                 (intersection ,acceptor-names
+                                                               (second list)))))
+                                      *rest-handler-alist*))
+                     (push (list ,uri ,acceptor-names ',name)
+                           *rest-handler-alist*)))))
        (defun ,name (&key ,@(loop for part in lambda-list
-                                  collect (make-defun-parameter part
-                                                                default-parameter-type
-                                                                default-request-type)))
-	 ,(if args
-	      `(cl-ppcre:register-groups-bind ,args
-		  (,uri (hunchentoot:request-uri*))
-		,@body)
-	      `(,@body))))))
+                               collect (make-defun-parameter part
+                                                             default-parameter-type
+                                                             default-request-type)))
+         ,(if args
+              `(cl-ppcre:register-groups-bind ,args
+                   (,uri (hunchentoot:request-uri*))
+                 ,@body)
+              `(progn ,@body))))))
 
 (defun dispatch-rest-handlers (request)
   "This is a dispatcher which returns the appropriate handler
 defined with DEFINE-REST-HANDLER, if there is one."
   (loop for (uri acceptor-names rest-handler) in *rest-handler-alist*
-        when (and (or (eq acceptor-names t)
-                      (find (hunchentoot:acceptor-name hunchentoot:*acceptor*) acceptor-names :test #'eq))
-                  (cond ((stringp uri)
-			 (let ((scanner (cl-ppcre:create-scanner uri)))
-			   (cl-ppcre:scan scanner (hunchentoot:script-name request))))
-                        (t (funcall uri request))))
-        do (return rest-handler)))
+     when (and (or (eq acceptor-names t)
+                   (find (hunchentoot:acceptor-name hunchentoot:*acceptor*) acceptor-names :test #'eq))
+               (cond ((stringp uri)
+                      (let ((scanner (cl-ppcre:create-scanner uri)))
+                        (cl-ppcre:scan scanner (hunchentoot:script-name request))))
+                     (t (funcall uri request))))
+     do (return rest-handler)))
