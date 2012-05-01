@@ -36,16 +36,21 @@
   "looks up path relative to whereever this asdf system is installed.  Returns a truename"
   (truename (asdf:system-relative-pathname :planet-git path)))
 
+(setq *rest-handler-alist*
+      (list
+       (list "^/?$" t #'home-page)
+       (list "^/register?$" t #'register-page)
+       (list "^/(\\w+)/settings/?$" t #'user-settings-page)
+       (list "^/(\\w+)/settings/email/(\\w+)/delete/?$" t #'user-email-delete)
+       (list "^/(\\w+)/settings/add-key?$" t #'add-ssh-key)
+       (list "^/[^/]+/$" t #'user-page)
+       (list "^/[^/]+/[^/]+/$" t #'repository-home-page)
+       (list "^/[^/]+/[^/]+/branch/[^/]+/$" t #'repository-branch-page)))
 
 (setq hunchentoot:*dispatch-table*
  (list
-  'hunchentoot:dispatch-easy-handlers
-  'dispatch-rest-handlers
-  (hunchentoot:create-regex-dispatcher "^/?$" 'home-page)
-  (hunchentoot:create-regex-dispatcher "^/[^/]+/$" 'user-page)
-  (hunchentoot:create-regex-dispatcher "^/[^/]+/[^/]+/$" 'repository-home-page)
-  (hunchentoot:create-regex-dispatcher "^/[^/]+/[^/]+/branch/[^/]+/$" 'repository-branch-page)
-  (hunchentoot:create-regex-dispatcher "^/[^/]+/[^/]+/key/[^/]+/$" 'repository-key-page)
+  #'hunchentoot:dispatch-easy-handlers
+  #'dispatch-rest-handlers
   (hunchentoot:create-folder-dispatcher-and-handler "/static/" (resource-path "static"))
   ))
 

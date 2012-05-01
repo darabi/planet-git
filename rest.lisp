@@ -37,15 +37,15 @@ DEFINE-REST-HANDLER.")
                 (with-rebinding (uri)
                   `(progn
                      (setq *rest-handler-alist*
-                           (delete-if (lambda (list)
+                           (substitute-if
+                            (list ,uri ,acceptor-names ',name)
+                            (lambda (list)
                                         (and (or (equal ,uri (first list))
                                                  (eq ',name (third list)))
                                              (or (eq ,acceptor-names t)
                                                  (intersection ,acceptor-names
                                                                (second list)))))
-                                      *rest-handler-alist*))
-                     (push (list ,uri ,acceptor-names ',name)
-                           *rest-handler-alist*)))))
+                            *rest-handler-alist*))))))
        (defun ,name (&key ,@(loop for part in lambda-list
                                collect (make-defun-parameter part
                                                              default-parameter-type
