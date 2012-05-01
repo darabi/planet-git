@@ -63,16 +63,6 @@
 			     :value "Create")))))))
 
 
-(def-who-macro repository-item-fragment (name owner public)
-  `(cl-who:htm
-    (:div :class "well project"
-	  (if ,public
-	      (cl-who:htm (:span :class "pubilc" "Public"))
-	      (cl-who:htm (:span :class "private" "Private")))
-	  (:a :href (cl-who:str (url-join ,owner ,name))
-	      (:h3 :class "name"
-		   (cl-who:str ,name))))))
-
 
 (defun repository-page (username repository-name &key branch)
   (let*
