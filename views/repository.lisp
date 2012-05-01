@@ -122,14 +122,12 @@
 				    (timestamp (third author)))
 			       (cl-who:htm
 				(:img :src (gravatar-url email :size 40))
-				(:p
-				 (cl-who:str
-				  (cl-git:git-commit-message commit)))
+				(:p (cl-who:str (cl-git:git-commit-message commit)))
 				(:span :class "author" (cl-who:str name))
 				(:span :class "date"
 				       (cl-who:str
-					(local-time:format-timestring nil timestamp :format
-								      '(:long-month " " :day ", " :year))))))
+                        (local-time:format-timestring nil timestamp :format
+                                                      '(:long-month " " :day ", " :year))))))
 			     )))))))
 		((and (eq branch nil) is-current-user)
 		 (cl-who:htm
