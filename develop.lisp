@@ -65,7 +65,7 @@
     (quit :unix-status 1))
   (py-configparser:read-files
    *config*
-   (list #p"/home/russell/projects/planet-git/config.ini")))
+   (list (pathname config))))
 
 (flet ((get-option (option)
          (parse-integer
