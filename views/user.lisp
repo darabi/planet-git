@@ -79,15 +79,14 @@ delete button"
 
 
 (def-who-macro* user-settings-page (user emails)
-		(render-standard-page (:title (cl-who:str (slot-value user 'username))
+		(render-standard-page (:title (cl-who:str (user-username user))
 				       :page-header
 				       ((:img :src (user-gravatar-url user :size 40))
-                        (:h1 (:a :href (url-join (slot-value user 'username))
-                                 (cl-who:str (slot-value user 'username)))
+                        (:h1 (:a :href (url-join (user-username user))
+                                 (cl-who:str (user-username user)))
 					     (:small "Settings"))))
 		  (form-fragment login-form
-				 (('fullname "Fullname:" "text" :value (slot-value user 'fullname))
-				  ('email "Email:" "text" :value (slot-value user 'email)))
+				 (('fullname "Fullname:" "text" :value (user-fullname user)))
 				 :buttons ((:input :type "submit"
 						   :class "btn primary"
 						   :name "login-form-submit"
@@ -112,9 +111,7 @@ delete button"
              :validate (#'validate-length #'validate-email)))
      (login-form
       (fullname :parameter-type 'string :request-type :post
-                :validate (#'validate-length))
-      (email :parameter-type 'string :request-type :post
-             :validate (#'validate-length #'validate-email))))
+                :validate (#'validate-length))))
   (let*
       ((user (car (postmodern:select-dao 'login (:= 'username username))))
        (is-current-user (when user
@@ -134,7 +131,6 @@ delete button"
                  (login-form
                   (let ((user (postmodern:get-dao 'login (slot-value user 'id))))
                     (setf (slot-value user 'fullname) fullname)
-                    (setf (slot-value user 'email) email)
                     (postmodern:update-dao user)))))
           (let ((emails (postmodern:select-dao 'email (:= 'user-id (slot-value user 'id)))))
             (user-settings-page user emails)))
@@ -152,8 +148,7 @@ delete button"
     (if is-current-user
 	(let ((email (car
 		      (postmodern:select-dao 'email
-					     (:and (:= 'id email-id)
-						   (:= 'user-id (slot-value user 'id)))))))
+					     (:and (:= 'id email-id) (:= 'user-id (id user)))))))
 	  (if email
 	      (postmodern:delete-dao email)
 	      (setf (hunchentoot:return-code*) hunchentoot:+http-not-found+))
