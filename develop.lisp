@@ -43,6 +43,7 @@
   ;; default swank configuration
   (add-section "swank")
   (set-option "swank" "enabled" "no")
+  (set-option "swank" "port" "4005")
 
   ;; default webserver configuration
   (add-section "webserver")
