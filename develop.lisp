@@ -56,7 +56,12 @@
   (set-option "database" "host" "localhost")
   (set-option "database" "port" "5432")
   (set-option "database" "username" "gitui")
-  (set-option "database" "password" "oenRTe90u"))
+  (set-option "database" "password" "oenRTe90u")
+
+  ;; default planet-git configuration
+  (add-section "planet-git")
+  (set-option "planet-git" "repository-path" "repository-path")
+  (set-option "planet-git" "git-ssh-host" "git@localhost"))
 
 (with-cli-options ()
     (help &parameters config)
@@ -109,7 +114,8 @@ the LIST"
 
 (flet ((get-option (option)
           (py-configparser:get-option *config* "planet-git" option)))
-  (setq planet-git:*repository-directory* (pathname (get-option "repository-path"))))
+  (setq planet-git:*repository-directory* (pathname (get-option "repository-path")))
+  (setq planet-git:*git-ssh-host* (pathname (get-option "git-ssh-host"))))
 
 
 ;;;

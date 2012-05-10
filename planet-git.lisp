@@ -28,7 +28,8 @@
 
 ;;; Global Config
 
-(defparameter *repository-directory* #p"/tmp/")
+(defvar *repository-directory* #p"/tmp/")
+(defvar *git-ssh-host* "git@localhost")
 
 ;;; Webserver
 

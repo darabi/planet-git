@@ -132,8 +132,15 @@
 		((and (eq branch nil) is-current-user)
 		 (cl-who:htm
 		  (:div :class "well"
-			(:h2 "Welcome to your new repository."))
-		  ))
+			(:h2 "Welcome to your new repository.")
+            (:p "First things first, if you haven't already done so,
+            you should set up your user preferences."
+                (:pre (format t "git config --global user.name \"~A\"
+git config --global user.email \"~A\"" (user-fullname user) (user-primary-email user))))
+            (:p "If you are adding an existing repository begin by,"
+                (:pre (format t "cd existing_repository
+git remote add origin ~A:~A/~A
+git push origin master" *git-ssh-host* (user-username user) (repository-name repository)))))))
 		((eq branch nil)
 		 (cl-who:htm
 		  (:div :class "well"

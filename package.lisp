@@ -20,4 +20,5 @@
   (:use #:cl)
   (:export
    #:*repository-directory*
+   #:*git-ssh-host*
    #:create-tables))
