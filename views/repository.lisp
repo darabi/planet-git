@@ -47,7 +47,7 @@
 	  (hunchentoot:redirect (concatenate 'string "/"
 					     (slot-value (loginp) 'username) "/"name "/")))
       (render-standard-page (:title "New Repository")
-	(:form :action "" :method "post" :class "form-stacked"
+	(:form :action "" :method "post"
 	       (if (> (hash-table-count errors) 0)
 		   (cl-who:htm
 		    (:div :class "alert-message error"
