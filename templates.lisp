@@ -119,8 +119,10 @@ which it is in fact.  Useful for defining syntactic constructs"
 			    :margin-left "-40px")))
 
 			 ((".project") nil
-			  (("span.private")
-			   (:color "red")))
+			  (("h3")
+			   (:display "inline"))
+			  ((".label")
+			   (:vertical-align "top")))
 
 			 ((".project-bar")
 			  (:height "27px")

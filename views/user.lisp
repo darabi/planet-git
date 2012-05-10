@@ -22,12 +22,11 @@
 (def-who-macro repository-item-fragment (name owner public)
   `(cl-who:htm
     (:div :class "well project"
-	  (if ,public
-	      (cl-who:htm (:span :class "pubilc" "Public"))
-	      (cl-who:htm (:span :class "private" "Private")))
-	  (:a :href (cl-who:str (url-join ,owner ,name))
-	      (:h3 :class "name"
-		   (cl-who:str ,name))))))
+          (:a :href (cl-who:str (url-join ,owner ,name))
+              (:h3 :class "name"
+                   (cl-who:str ,name)))
+          (unless ,public
+            (cl-who:htm (:span :class "label label-important" "Private"))))))
 
 
 (define-rest-handler (user-page :uri "^/(\\w+)/?$" :args (username)) ()
@@ -51,7 +50,7 @@
 				(visible (or (slot-value repo 'public)
 					     (equal (slot-value user 'username)
 						    (when (loginp) (slot-value (loginp) 'username)))))
-				(public (slot-value repo 'public)))
+				(public (repository-public repo)))
 			   (hunchentoot:log-message* hunchentoot:*lisp-warnings-log-level* "Repository ~a" repo)
 			   (when (and repo (or visible is-current-user))
 			     (repository-item-fragment (slot-value repo 'name)
