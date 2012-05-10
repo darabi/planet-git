@@ -82,9 +82,9 @@
 		 (branch (selected-branch repository branches branch)))
 	    (render-user-page (user :title
 				   (cl-who:htm (:a :href (url-join (slot-value user 'username))
-						   (cl-who:str (slot-value user 'username)))
+						   (cl-who:str (user-username user)))
 					       (:span (cl-who:str "/"))
-					       (cl-who:str (slot-value repository 'name)))
+					       (cl-who:str (repository-name repository)))
                    :subtitle "")
 	      (cond
 		(branch

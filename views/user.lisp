@@ -42,8 +42,7 @@
            :extra-header (when is-current-user
                            (cl-who:htm (:a :class "btn primary pull-right"
                                            :href "/repository/new"
-                                           "Add Repository")))
-           :body-class "span11")
+                                           "Add Repository"))))
 	    (let ((repositories (postmodern:select-dao
 				 'repository (:= 'owner-id (slot-value user 'id)))))
 	      (hunchentoot:log-message* hunchentoot:*lisp-warnings-log-level* "Repositories ~a" repositories)
@@ -67,15 +66,17 @@
   "this fragment renders a users email address as a list item with a
 delete button"
   (cl-who:htm
-   (:div :class "alert-message"
-	 (:a :class "close" :href (cl-who:str
-				   (url-join (slot-value user 'username)
-					     "settings"
-					     "email"
-					     (write-to-string (slot-value email 'id))
-					     "delete"))
+   (:tr
+    (:td
+	 (:a :class "close"
+         :href (cl-who:str
+                (url-join (slot-value user 'username)
+                          "settings"
+                          "email"
+                          (write-to-string (slot-value email 'id))
+                          "delete"))
 	     (cl-who:str "x"))
-	 (cl-who:str (slot-value email 'email)))))
+	 (cl-who:str (slot-value email 'email))))))
 
 
 (def-who-macro* user-settings-page (user emails)
@@ -85,19 +86,24 @@ delete button"
                         (:h1 (:a :href (url-join (user-username user))
                                  (cl-who:str (user-username user)))
 					     (:small "Settings"))))
+          (:h2 "Personal Information")
 		  (form-fragment login-form
 				 (('fullname "Fullname:" "text" :value (user-fullname user)))
+                 :class "well form-stacked"
 				 :buttons ((:input :type "submit"
 						   :class "btn primary"
 						   :name "login-form-submit"
 						   :value "Save")))
+          (:h2 "Emails")
+          (:table :class "table"
 		  (labels ((email-fragment (emails)
 			     (let* ((email (car emails)) (rest (cdr emails)))
 			       (email-item-fragment user email)
 			       (when rest (email-fragment rest)))))
-		    (when emails (email-fragment emails)))
+		    (when emails (email-fragment emails))))
 		  (form-fragment email-form
 				 (('email "Email:" "text"))
+                 :class "well form-inline"
 				 :buttons ((:input :type "submit"
 						   :class "btn primary"
 						   :name "email-form-submit"

@@ -38,7 +38,7 @@ which it is in fact.  Useful for defining syntactic constructs"
        (cl-who:with-html-output (*standard-output* nil)
 	 ,pseudo-html-form))))
 
-(defmacro render-standard-page ((&key title (subtitle "") (body-class "span14") page-header) &body body)
+(defmacro render-standard-page ((&key title (subtitle "") (body-class "span10") page-header) &body body)
   `(cl-who:with-html-output-to-string (*standard-output* nil :prologue t)
      (:html :xmlns "http://www.w3.org/1999/xhtml"
 	    :xml\:lang "en"
@@ -49,16 +49,13 @@ which it is in fact.  Useful for defining syntactic constructs"
 	     (:title "Planet Git - " ,title)
 	     (:link :rel "stylesheet" :href "/static/css/bootstrap.css")
 	     (:script :type "text/javascript" :src "/static/js/jquery.js")
+	     (:script :type "text/javascript" :src "/static/js/bootstrap.js")
 	     (:script :type "text/javascript" :src "/static/js/bootstrap-modal.js")
 	     (:style :type "text/css"
 		     (cl-who:str
 		      (css-lite:css
 			(("html, body")
 			 (:background-color "#eee"))
-			((".container")
-			 (:width "820px"))
-			(("body")
-			 (:padding-top "40px")) ; 40px to make the container go all the way to the bottom of the topbar
 			((".container > footer p")
 			 (:text-align "center")) ; center align it with the container
 
@@ -99,7 +96,7 @@ which it is in fact.  Useful for defining syntactic constructs"
 			  :padding-left "19px"
 			  :border-left "1px solid #eee"))
 
-			 ((".topbar .btn")
+			 ((".navbar .btn")
 			  (:border "0"))
 
 			 (("ol.commit-list")
@@ -147,12 +144,12 @@ which it is in fact.  Useful for defining syntactic constructs"
 			   (:font-size "small")))
 			 )))))
 	    (:body
-	     (:div :class "topbar"
-		   (:div :class "fill"
+	     (:div :class "navbar"
+		   (:div :class "navbar-inner"
 			 (:div :class "container"
 			       (:a :class "brand" :href "/" "Planet Git")
 			       (:ul :class "nav")
-			       (:ul :class "nav secondary-nav"
+			       (:ul :class "nav pull-right"
 				    (if (loginp)
 					(let ((username (slot-value (loginp) 'username)))
 					  (cl-who:htm
@@ -190,10 +187,8 @@ which it is in fact.  Useful for defining syntactic constructs"
 							:name "create"
 							:value "Create")))
 				       (:li (:a :href "/register" "Register"))
-				       (:li (:a :href (concatenate 'string
-								   "/login?came-from="
-								   (hunchentoot:request-uri*))
-						:data-controls-modal "login-modal"
+				       (:li (:a :href "#login-modal"
+						:data-toggle "modal"
 						:data-backdrop "true"
 						"Login"))))))))
 	     (:div :class "container"
@@ -207,7 +202,7 @@ which it is in fact.  Useful for defining syntactic constructs"
 			       ,@body)))))))
 
 
-(defmacro render-user-page ((user &key title subtitle (body-class "span14") extra-header) &body body)
+(defmacro render-user-page ((user &key title subtitle (body-class "span10") extra-header) &body body)
   `(render-standard-page
        (:body-class ,body-class
         :title (cl-who:str (slot-value ,user 'username))

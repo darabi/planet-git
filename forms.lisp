@@ -164,9 +164,9 @@ then-form; otherwise, the values returned by the else-form."
          ,else)))
 
 (def-who-macro field-fragment (name description type &key value error)
-  `(:div :class (if ,error "clearfix error" "clearfix")
-         (:label ,description)
-         (:div :class "input"
+  `(:div :class (if ,error "control-group error" "control-group")
+         (:label :class "control-label" ,description)
+         (:div :class "controls"
                (:input :type ,type :name ,name
                        :class (if ,error "error")
                        :value ,value)
@@ -174,7 +174,7 @@ then-form; otherwise, the values returned by the else-form."
 
 
 (def-who-macro form-fragment
-    (form fields &key (action "") (class "form-stacked") buttons)
+    (form fields &key (action "") (class "") buttons)
   `(:form :id (string-downcase (symbol-name ',form))
           :action ,action :method "post" :class ,class
           (if (and (eq ',form *current-form*)
