@@ -90,8 +90,12 @@
    (owner-id :col-type integer :initarg :owner-id)
    (name :col-type string :initarg :name :accessor repository-name)
    (path :col-type string :initarg :path :accessor repository-path)
-   (branch :col-type (or postmodern:db-null string) :initarg :branch
+   (branch :col-type (or postmodern:db-null string)
+           :initarg :branch
            :accessor repository-branch)
+   (description :col-type (or postmodern:db-null string)
+                :initarg :description
+                :accessor repository-description)
    (public :col-type boolean :initarg :public :accessor repository-public))
   (:metaclass postmodern:dao-class)
   (:keys id))
