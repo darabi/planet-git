@@ -194,9 +194,10 @@ which it is in fact.  Useful for defining syntactic constructs"
 	     (:div :class "container"
 		   (:div :class "content"
 			 (:div :class "page-header"
-			       ,(or `(cl-who:htm ,page-header)
-				    `(cl-who:htm (:h1 ,title
-						      (:small ,subtitle)))))
+			       ,(if page-header
+                        `(cl-who:htm ,page-header)
+                        `(cl-who:htm (:h1 ,title
+                                          (:small ,subtitle)))))
 			 (:div :class "row"
 			       (:div :class ,body-class
 			       ,@body)))))))
