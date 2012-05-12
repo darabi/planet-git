@@ -184,7 +184,7 @@ which it is in fact.  Useful for defining syntactic constructs"
                                  (:li "Username or Email:")
                                  (:li (:input :type "text" :name "login"))
                                  (:li "Password:")
-                                 (:li (:input :type "text" :name "password")))
+                                 (:li (:input :type "password" :name "password")))
                                 (:input :type "submit"
                                         :style "visibility: hidden;"
                                         :name "create"

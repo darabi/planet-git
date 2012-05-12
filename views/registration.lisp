@@ -44,8 +44,8 @@
       (('fullname "Fullname:" "text")
        ('username "Username:" "text")
        ('email "Email:" "text")
-       ('password "Password:" "text")
-       ('cpassword "confirm passwd" "text"))
+       ('password "Password:" "password")
+       ('cpassword "confirm passwd" "password"))
       :buttons ((:input :class "btn primary" :type "submit"
                         :name "new-user-form-submit" :value "Register"))))))
 
@@ -73,7 +73,7 @@
                  (field-fragment "login" "Username or Email:" "text"
                                  :value login
                                  :error (gethash 'login errors))
-                 (field-fragment "password" "Password:" "text"
+                 (field-fragment "password" "Password:" "password"
                                  :error (gethash 'password errors))
                  (:div :class "actions"
                        (:a :class "btn secondary"
