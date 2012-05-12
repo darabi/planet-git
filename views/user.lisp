@@ -69,16 +69,32 @@ delete button"
     (:td
 	 (:a :class "close"
          :href (cl-who:str
-                (url-join (slot-value user 'username)
+                (url-join (user-username user)
                           "settings"
                           "email"
-                          (write-to-string (slot-value email 'id))
+                          (write-to-string (id email))
                           "delete"))
 	     (cl-who:str "x"))
-	 (cl-who:str (slot-value email 'email))))))
+	 (cl-who:str (email-address email))))))
+
+(def-who-macro* key-item-fragment (user key)
+  "this fragment renders a users email address as a list item with a
+delete button"
+  (cl-who:htm
+   (:tr
+    (:td
+	 (:a :class "close"
+         :href (cl-who:str
+                (url-join (user-username user)
+                          "settings"
+                          "key"
+                          (write-to-string (id key))
+                          "delete"))
+	     (cl-who:str "x"))
+	 (cl-who:str (key-title key))))))
 
 
-(def-who-macro* user-settings-page (user emails)
+(def-who-macro* user-settings-page (user emails keys)
   (render-standard-page (:title (cl-who:str (user-username user))
                          :page-header
                          ((:img :src (user-gravatar-url user :size 40))
@@ -111,6 +127,12 @@ delete button"
                                        :value "Add"))))
      ("Keys"
       (:h2 "Keys")
+      (:table :class "table"
+              (labels ((key-fragment (keys)
+                         (let* ((key (car keys)) (rest (cdr keys)))
+                           (key-item-fragment user key)
+                           (when rest (key-fragment rest)))))
+                (when keys (key-fragment keys))))
       (form-fragment key-form
                      (('key "Key:" "textarea" :class "input-xlarge" :rows 3))
                      :class "well form-stacked"
@@ -154,8 +176,9 @@ delete button"
                  (:key-form
                   (postmodern:insert-dao
                    (key-parse key)))))
-          (let ((emails (postmodern:select-dao 'email (:= 'user-id (slot-value user 'id)))))
-            (user-settings-page user emails)))
+          (let ((emails (postmodern:select-dao 'email (:= 'user-id (id user))))
+                (keys (postmodern:select-dao 'key (:= 'user-id (id user)))))
+            (user-settings-page user emails keys)))
         (setf (hunchentoot:return-code*) hunchentoot:+http-forbidden+))))
 
 
