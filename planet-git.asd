@@ -28,7 +28,8 @@
                #:parenscript
                #:py-configparser
                #:unix-options
-               #:md5)
+               #:md5
+               #:database-migrations)
   :components ((:file "package")
                (:file "compat")
                (:file "utils")
