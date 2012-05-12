@@ -187,9 +187,9 @@ delete button"
       ((user (car (postmodern:select-dao 'login (:= 'username username))))
        (is-current-user (when user
 			  (equal
-			   (slot-value user 'username)
+			   (user-username user)
 			   (when (loginp)
-			     (slot-value (loginp) 'username))))))
+			     (user-username (loginp)))))))
     (if is-current-user
 	(let ((email (car
 		      (postmodern:select-dao 'email
@@ -197,7 +197,25 @@ delete button"
 	  (if email
 	      (postmodern:delete-dao email)
 	      (setf (hunchentoot:return-code*) hunchentoot:+http-not-found+))
-	  (hunchentoot:redirect (url-join (slot-value user 'username) "settings")))
+	  (hunchentoot:redirect (url-join (user-username user) "settings")))
+	(setf (hunchentoot:return-code*) hunchentoot:+http-forbidden+))))
+
+(define-rest-handler (user-key-delete :uri "^/(\\w+)/settings/key/(\\w+)/delete/?$" :args (username key-id)) ()
+  (let*
+      ((user (car (postmodern:select-dao 'login (:= 'username username))))
+       (is-current-user (when user
+			  (equal
+			   (user-username user)
+			   (when (loginp)
+			     (user-username (loginp)))))))
+    (if is-current-user
+	(let ((key (car
+		      (postmodern:select-dao 'key
+					     (:and (:= 'id key-id) (:= 'user-id (id user)))))))
+	  (if key
+	      (postmodern:delete-dao key)
+	      (setf (hunchentoot:return-code*) hunchentoot:+http-not-found+))
+	  (hunchentoot:redirect (url-join (user-username user) "settings")))
 	(setf (hunchentoot:return-code*) hunchentoot:+http-forbidden+))))
 
 

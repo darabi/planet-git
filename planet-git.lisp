@@ -39,14 +39,16 @@
 
 (setq *rest-handler-alist*
       (list
-       (list "^/?$" t #'home-page)
-       (list "^/register?$" t #'register-page)
-       (list "^/(\\w+)/settings/?$" t #'user-settings-page)
-       (list "^/(\\w+)/settings/email/(\\w+)/delete/?$" t #'user-email-delete)
-       (list "^/(\\w+)/settings/add-key?$" t #'add-ssh-key)
-       (list "^/[^/]+/$" t #'user-page)
-       (list "^/[^/]+/[^/]+/$" t #'repository-home-page)
-       (list "^/[^/]+/[^/]+/branch/[^/]+/$" t #'repository-branch-page)))
+       (list "^/?$" t 'home-page)
+       (list "^/register?$" t 'register-page)
+       (list "^/(\\w+)/settings/?$" t 'user-settings-page)
+       (list "^/(\\w+)/settings/email/(\\w+)/delete/?$" t 'user-email-delete)
+       (list "^/(\\w+)/settings/key/(\\w+)/delete/?$" t 'user-key-delete)
+       (list "^/(\\w+)/settings/add-key?$" t 'add-ssh-key)
+       (list "^/[^/]+/$" t 'user-page)
+       (list "^/[^/]+/[^/]+/$" t 'repository-home-page)
+       (list "^/[^/]+/[^/]+/key/[^/]+/$" t 'repository-key-access)
+       (list "^/[^/]+/[^/]+/branch/[^/]+/$" t 'repository-branch-page)))
 
 (setq hunchentoot:*dispatch-table*
  (list
