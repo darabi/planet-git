@@ -77,8 +77,6 @@
 (flet ((get-option (option)
          (parse-integer
           (py-configparser:get-option *config* "swank" option))))
-  (setf hunchentoot:*catch-errors-p*
-        (not (py-configparser:get-option *config* "swank" "debug")))
   (defparameter *swank-port* (get-option "port")))
 (defparameter *swank-server* nil)
 
@@ -95,6 +93,8 @@ the LIST"
 (if (option-in-list *config* "swank" "enabled" *trueish*)
   (setf *swank-server*
         (swank:create-server :port *swank-port* :style :spawn :dont-close t)))
+(setf hunchentoot:*catch-errors-p*
+      (not (option-in-list *config* "swank" "debug" *trueish*)))
 
 ;;;
 ;;; Configure the database
