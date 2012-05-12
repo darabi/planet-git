@@ -35,6 +35,26 @@
     (repository-page username repository-name :branch ref)))
 
 
+(define-rest-handler (repository-key-access
+                      :uri "^/([^/]+)/([^/]+)/key/([^/]+)/?$"
+                      :args (username repository-name key-id))
+    ()
+  (let ((key-id (parse-integer key-id)))
+    (if
+     (let ((owner-key (postmodern:query (:select '*
+                       :from 'key
+                       :inner-join 'login :on (:= 'key.user-id 'login.id)
+                       :inner-join 'repository :on (:= 'login.id 'repository.owner-id)
+                       :where (:and (:= 'key.id key-id)
+                                    (:= 'repository.name repository-name)
+                                    (:= 'login.username username))))))
+       owner-key)
+
+     (setf (hunchentoot:return-code*) hunchentoot:+http-no-content+)
+     (setf (hunchentoot:return-code*) hunchentoot:+http-forbidden+)))
+  "") ;; return an empty string for the content
+
+
 (hunchentoot:define-easy-handler
     (new-repository-page :uri "/repository/new")
     ((name :parameter-type 'string)
