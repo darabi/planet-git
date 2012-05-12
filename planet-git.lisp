@@ -199,7 +199,8 @@ aproprate branch to display."
 
 
 (defun login-session (login password)
-  "log a user out of a session"
+  "log a user in to a session, the user object will be stored as the
+value of the session."
   (let ((user-id (verify-password login password)))
     (if user-id
 	(let ((session (hunchentoot:start-session))
@@ -216,7 +217,10 @@ aproprate branch to display."
 
 
 (defun loginp ()
-  (hunchentoot:session-value 'user))
+  "if there is a current session then reurn its value which will be a
+user object."
+  (when (boundp 'hunchentoot:*session*)
+    (hunchentoot:session-value 'user)))
 
 
 (defun create-repository (name owner public)
