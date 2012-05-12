@@ -55,32 +55,33 @@
     ((login :parameter-type 'string :request-type :post)
      (password :parameter-type 'string :request-type :post)
      (came-from :parameter-type 'string))
-  (let* ((errors (when (and login password) (validate-login)))
-	 (logged-in (when (and errors (= (hash-table-count errors) 0)) (login-session login password))))
-    (unless (and errors (gethash 'password errors))
-      (setf (gethash 'password errors) "Invalid password."))
+  (let* ((errors (if (and login password) (validate-login)))
+         (logged-in (when (and errors (= (hash-table-count errors) 0)) (login-session login password))))
+    (if (and errors (gethash 'password errors))
+      (setf (gethash 'password errors) "Invalid password.")
+      (setf errors (make-hash-table)))
     (if logged-in
-	(hunchentoot:redirect came-from)
-	(render-standard-page (:title "Login")
-	  (:form :action "" :class "login-form form-stacked" :method "post"
-		 (if (> (hash-table-count errors) 0)
-		     (cl-who:htm
-		      (:div :class "alert-message error"
-			    (:p "Error detected on the page"))))
-		  (:input :type "hidden" :name "came-from"
-			  :value came-from)
-		  (field-fragment "login" "Username or Email:" "text"
-			       :value login
-			       :error (gethash 'login errors))
-		  (field-fragment "password" "Password:" "text"
-			       :error (gethash 'password errors))
-		 (:div :class "actions"
-		       (:a :class "btn secondary"
-			   :href came-from "Cancel")
-		       (:input :class "btn primary"
-			       :type "submit"
-			       :name "login"
-			       :value "Login")))))))
+        (hunchentoot:redirect came-from)
+        (render-standard-page (:title "Login")
+          (:form :action "" :class "login-form form-stacked" :method "post"
+                 (if (> (hash-table-count errors) 0)
+                     (cl-who:htm
+                      (:div :class "alert-message error"
+                            (:p "Error detected on the page"))))
+                 (:input :type "hidden" :name "came-from"
+                         :value came-from)
+                 (field-fragment "login" "Username or Email:" "text"
+                                 :value login
+                                 :error (gethash 'login errors))
+                 (field-fragment "password" "Password:" "text"
+                                 :error (gethash 'password errors))
+                 (:div :class "actions"
+                       (:a :class "btn secondary"
+                           :href came-from "Cancel")
+                       (:input :class "btn primary"
+                               :type "submit"
+                               :name "login"
+                               :value "Login")))))))
 
 
 (hunchentoot:define-easy-handler
