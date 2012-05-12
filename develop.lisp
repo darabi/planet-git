@@ -44,6 +44,7 @@
   (add-section "swank")
   (set-option "swank" "enabled" "no")
   (set-option "swank" "port" "4005")
+  (set-option "swank" "debug" nil)
 
   ;; default webserver configuration
   (add-section "webserver")
@@ -76,6 +77,8 @@
 (flet ((get-option (option)
          (parse-integer
           (py-configparser:get-option *config* "swank" option))))
+  (setf hunchentoot:*catch-errors-p*
+        (not (py-configparser:get-option *config* "swank" "debug")))
   (defparameter *swank-port* (get-option "port")))
 (defparameter *swank-server* nil)
 
