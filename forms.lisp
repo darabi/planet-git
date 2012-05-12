@@ -163,13 +163,20 @@ then-form; otherwise, the values returned by the else-form."
            ,then)
          ,else)))
 
-(def-who-macro field-fragment (name description type &key value error)
+(def-who-macro field-fragment (name description type &rest rest &key value error &allow-other-keys)
   `(:div :class (if ,error "control-group error" "control-group")
          (:label :class "control-label" ,description)
          (:div :class "controls"
-               (:input :type ,type :name ,name
-                       :class (if ,error "error")
-                       :value ,value)
+               ,(cond
+                  ((equal type "textarea")
+                   `(:textarea :name ,name
+                               :class (if ,error "error")
+                               :value ,value
+                       ,@rest))
+                  (t `(:input :type ,type :name ,name
+                              :class (if ,error "error")
+                              :value ,value
+                              ,@rest)))
                (:span :class "help-inline" (cl-who:str ,error)))))
 
 
@@ -185,7 +192,7 @@ then-form; otherwise, the values returned by the else-form."
           ,@(mapcar
              (lambda (field)
                (destructuring-bind
-                     (field-name field-title field-type &key value error)
+                     (field-name field-title field-type &rest rest &key value error &allow-other-keys)
                    field
                  `(field-fragment (string-downcase (symbol-name ,field-name))
                                   ,field-title
@@ -195,7 +202,8 @@ then-form; otherwise, the values returned by the else-form."
                                                ,error))
                                   :value (if (eq ',form *current-form*)
                                              (gethash ,field-name *form-data*)
-                                             ,value))))
+                                             ,value)
+                                  ,@rest)))
              fields)
           (:div :class "actions"
                 ,@buttons)))
