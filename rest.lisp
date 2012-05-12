@@ -52,7 +52,7 @@ DEFINE-REST-HANDLER.")
                                                              default-request-type)))
          ,(if args
               `(cl-ppcre:register-groups-bind ,args
-                   (,uri (hunchentoot:request-uri*))
+                   (,uri (request-uri*))
                  ,@body)
               `(progn ,@body))))))
 
@@ -61,9 +61,9 @@ DEFINE-REST-HANDLER.")
 defined with DEFINE-REST-HANDLER, if there is one."
   (loop for (uri acceptor-names rest-handler) in *rest-handler-alist*
      when (and (or (eq acceptor-names t)
-                   (find (hunchentoot:acceptor-name hunchentoot:*acceptor*) acceptor-names :test #'eq))
+                   (find (acceptor-name *acceptor*) acceptor-names :test #'eq))
                (cond ((stringp uri)
                       (let ((scanner (cl-ppcre:create-scanner uri)))
-                        (cl-ppcre:scan scanner (hunchentoot:script-name request))))
+                        (cl-ppcre:scan scanner (script-name request))))
                      (t (funcall uri request))))
      do (return rest-handler)))

@@ -1,0 +1,12 @@
+;; Defaults
+((:swank-enabled . t)
+ (:swank-port . 4005)
+ (:webserver-port . 8000)
+ (:shutdown-port . 6200)
+ (:db-host . "localhost")
+ (:db-port . 5432)
+ (:db-name . planet_git)
+ (:db-user-name . "gitui")
+ (:db-password . "oenRTe90u")
+ (:repository-path . "/home/russel/tmp/planet-git/")
+ (:git-ssh-host . "git@marvin.home"))

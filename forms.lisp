@@ -39,7 +39,8 @@ SYMBOL.  Used in cases where no parameter name is provided."
 SYMBOL.  Used in cases where no parameter name is provided."
   (intern (concatenate 'string (symbol-name form) "-" (symbol-name field))))
 
-(defun validate-form (form))
+(defun validate-form (form)
+  (declare (ignore form)))
 
 (defmacro define-form (form-name fields)
   `(defparameter ,form-name ',fields))
@@ -53,6 +54,7 @@ SYMBOL.  Used in cases where no parameter name is provided."
                         request-type
                         validate)
       arguments
+    (declare (ignore validate))
     (remove
      nil
      (concatenate
@@ -127,12 +129,12 @@ found to the global variable *FIELD-ERRORS*."
       ,@(mapcar
          (lambda (form)
            (let ((form-name (compute-real-form-name (car form))))
-             `((hunchentoot:post-parameter ,form-name)
+             `((post-parameter ,form-name)
                (validate-field-list (assoc-default (quote ,(car form)) *forms*))
                (if (= (hash-table-count *form-errors*) 0)
                    (progn
-                     (hunchentoot:log-message*
-                      hunchentoot:*lisp-warnings-log-level*
+                     (log-message
+                      *lisp-warnings-log-level*
                       "Form submitted: ~s" ,form-name)
                      ,@(cdr form)
                      ',(car form))
@@ -148,17 +150,17 @@ then-form; otherwise, the values returned by the else-form."
 
      ;; TODO validate-filed-list should be changed to return the count of
      ;; the errors
-     (when (hunchentoot:post-parameter (compute-real-form-name (caar *forms*)))
+     (when (post-parameter (compute-real-form-name (caar *forms*)))
        (validate-field-list (cdar *forms*)))
 
-     (hunchentoot:log-message*
-      hunchentoot:*lisp-warnings-log-level*
+     (log-message
+      *lisp-warnings-log-level*
       "Form errors: ~s" (hash-table-count *form-errors*))
-     (if (and (hunchentoot:post-parameter (compute-real-form-name (caar *forms*)))
+     (if (and (post-parameter (compute-real-form-name (caar *forms*)))
               (= (hash-table-count *form-errors*) 0))
          (progn
-           (hunchentoot:log-message*
-            hunchentoot:*lisp-warnings-log-level*
+           (log-message
+            *lisp-warnings-log-level*
             "Form submitted: ~s" (caar *forms*))
            ,then)
          ,else)))

@@ -22,6 +22,7 @@
 (defun assoc-default (item alist &key key test test-not)
   "return the CDR of the first cons in alist whose car satisfies the
 test, or nil if no such cons is found."
+  (declare (ignore key test-not))
   (if test
       (cdr (assoc item alist)); :key key :test test))
       (cdr (assoc item alist)))); :key key :test-not test-not))))

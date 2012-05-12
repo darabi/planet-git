@@ -32,6 +32,6 @@
 (defun home-page ()
   (render-standard-page (:title "Planet Git"
                                 :subtitle "a bad clone of github or gitorious.")
-	    (let ((users (postmodern:select-dao 'login)))
+	    (let ((users (select-dao 'login)))
           (loop :for user :in users
                :do (user-item-fragment user)))))

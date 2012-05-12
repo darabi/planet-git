@@ -15,11 +15,55 @@
 ;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 ;;;; package.lisp
+(in-package :cl-user)
 
 (defpackage #:planet-git
-  (:use #:cl)
+  (:use #:cl
+        #:hunchentoot
+        #:postmodern)
+  (:import-from #:anaphora
+                #:awhen
+                #:it)
+  (:import-from #:chunga
+                #:as-keyword)
+  (:import-from #:cl-git
+                #:git-commit-author
+                #:git-commit-message
+                #:git-reference-listall
+                #:with-git-repository
+                #:with-git-revisions)
+  (:import-from #:cl-ppcre
+                #:create-scanner
+                #:register-groups-bind
+                #:scan)
+  (:import-from #:cl-who
+                #:htm
+                #:str
+                #:with-html-output
+                #:with-html-output-to-string)
+  (:import-from #:css-lite
+                #:css)
+  (:import-from #:md5
+                #:md5sum-sequence)
+  (:import-from #:postmodern
+                #:connect-toplevel
+                #:dao-class
+                #:dao-table-definition
+                #:db-null
+                #:execute
+                #:get-dao
+                #:insert-dao
+                #:query
+                #:select-dao
+                #:table-exists-p
+                #:delete-dao)
+  ;; hunchentoot:shutdown is shadowed by ours
+  (:shadow #:shutdown)
   (:export
+   #:*git-ssh-host*
    #:*repository-directory*
    #:*git-user-homedir*
    #:*git-ssh-host*
-   #:create-tables))
+   #:create-tables
+   #:startup
+   #:shutdown))

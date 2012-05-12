@@ -52,11 +52,11 @@
        (list "^/[^/]+/[^/]+/key/[^/]+/$" t 'repository-key-access)
        (list "^/[^/]+/[^/]+/branch/[^/]+/$" t 'repository-branch-page)))
 
-(setq hunchentoot:*dispatch-table*
+(setq *dispatch-table*
  (list
-  #'hunchentoot:dispatch-easy-handlers
+  #'dispatch-easy-handlers
   #'dispatch-rest-handlers
-  (hunchentoot:create-folder-dispatcher-and-handler "/static/" (resource-path "static"))
+  (create-folder-dispatcher-and-handler "/static/" (resource-path "static"))
   ))
 
 
@@ -68,7 +68,7 @@
              :initarg :location :accessor user-location)
    (username :col-type string :initarg :username :accessor user-username)
    (password :col-type string :initarg :password :accessor user-password))
-  (:metaclass postmodern:dao-class)
+  (:metaclass dao-class)
   (:keys id))
 
 (defclass email ()
@@ -79,7 +79,7 @@
             :initarg :primary :accessor email-primary)
    (verified :col-type boolean  :initform nil
              :initarg :verified :accessor email-verified))
-  (:metaclass postmodern:dao-class)
+  (:metaclass dao-class)
   (:keys id user-id))
 
 (defclass key ()
@@ -88,7 +88,7 @@
    (title :col-type string :initarg :title :accessor key-title)
    (type :col-type string :initarg :type :accessor key-type)
    (key :col-type string :initarg :key :accessor key-value))
-  (:metaclass postmodern:dao-class)
+  (:metaclass dao-class)
   (:keys id user-id))
 
 (defclass repository ()
@@ -96,24 +96,25 @@
    (owner-id :col-type integer :initarg :owner-id)
    (name :col-type string :initarg :name :accessor repository-name)
    (path :col-type string :initarg :path :accessor repository-path)
-   (branch :col-type (or postmodern:db-null string)
+   (branch :col-type (or db-null string)
            :initarg :branch
            :accessor repository-branch)
-   (description :col-type (or postmodern:db-null string)
+   (description :col-type (or db-null string)
                 :initarg :description
                 :accessor repository-description)
    (public :col-type boolean :initarg :public :accessor repository-public))
-  (:metaclass postmodern:dao-class)
+  (:metaclass dao-class)
   (:keys id))
 
+(defgeneric repository-real-path (repo)
+  (:method ((repo repository))
+           (merge-pathnames (repository-path repo) *repository-directory*)))
 
-(defmethod repository-real-path ((repo repository))
-  "Return the calculated path to the repository"
-  (merge-pathnames (repository-path repo) *repository-directory*))
+(defgeneric user-primary-email (user)
+  (:method ((user login))
+           (car (select-dao 'email (:and (:= 'user-id (id user)) (:= 'primary t))))))
 
-
-(defmethod user-primary-email ((user login))
-  (car (postmodern:select-dao 'email (:and (:= 'user-id (id user)) (:= 'primary t)))))
+(defgeneric user-gravatar-url (user &key size))
 
 (defmethod user-gravatar-url ((user login) &key (size 80))
   "Return the url to a USER's gravatar, an optional SIZE keyword can
@@ -121,14 +122,14 @@ be used to set the requested size."
   (gravatar-url (email-address (user-primary-email user)) :size size))
 
 (defun create-tables ()
-  (unless (postmodern:table-exists-p 'login)
-    (postmodern:execute (postmodern:dao-table-definition 'login)))
-  (unless (postmodern:table-exists-p 'email)
-    (postmodern:execute (postmodern:dao-table-definition 'email)))
-  (unless (postmodern:table-exists-p 'key)
-    (postmodern:execute (postmodern:dao-table-definition 'key)))
-  (unless (postmodern:table-exists-p 'repository)
-    (postmodern:execute (postmodern:dao-table-definition 'repository))))
+  (unless (table-exists-p 'login)
+    (execute (dao-table-definition 'login)))
+  (unless (table-exists-p 'email)
+    (execute (dao-table-definition 'email)))
+  (unless (table-exists-p 'key)
+    (execute (dao-table-definition 'key)))
+  (unless (table-exists-p 'repository)
+    (execute (dao-table-definition 'repository))))
 
 (defun key-parse (key)
   "Parse a KEY string and return a new KEYS instance, if there is a
@@ -213,7 +214,7 @@ passwords"
 
 
 (defun verify-password (login password)
-  (let* ((user (car (postmodern:query
+  (let* ((user (car (query
 		     (:select 'login.id 'login.password
 			      :from 'login
 			      :left-join 'email :on (:= 'login.id 'email.user-id)
@@ -230,9 +231,9 @@ passwords"
 value of the session."
   (let ((user-id (verify-password login password)))
     (if user-id
-	(let ((session (hunchentoot:start-session))
-	      (user (postmodern:get-dao 'login user-id)))
-	  (setf (hunchentoot:session-value 'user session) user)
+	(let ((session (start-session))
+	      (user (get-dao 'login user-id)))
+	  (setf (session-value 'user session) user)
 	  )
 	nil
 	)))
@@ -240,14 +241,14 @@ value of the session."
 
 (defun logout-session ()
   "Remove the user from the current session-login"
-  (hunchentoot:delete-session-value 'user))
+  (delete-session-value 'user))
 
 
 (defun loginp ()
   "If there is a current session then reurn its value which will be a
 user object."
-  (when (boundp 'hunchentoot:*session*)
-    (hunchentoot:session-value 'user)))
+  (when (boundp '*session*)
+    (session-value 'user)))
 
 
 (defun create-repository (name owner &optional (public nil))
@@ -261,7 +262,7 @@ will not be PUBLIC by default by default."
 	 (path (merge-pathnames relative-path
 			       *repository-directory*)))
     (ensure-directories-exist path)
-    (postmodern:insert-dao
+    (insert-dao
      (make-instance 'repository
 		    :owner-id (slot-value owner 'id)
 		    :name name
@@ -273,13 +274,13 @@ will not be PUBLIC by default by default."
 (defun create-user (username fullname password email)
   "Create a new user from the attributes USERNAME FULLNAME PASSWORD
 and set the primary email address to EMAIL"
-  (postmodern:with-transaction ()
-    (let ((login (postmodern:insert-dao
+  (with-transaction ()
+    (let ((login (insert-dao
                   (make-instance 'login
                                  :fullname fullname
                                  :username username
                                  :password password))))
-      (postmodern:insert-dao
+      (insert-dao
        (make-instance 'email
                       :user-id (id login)
                       :email email

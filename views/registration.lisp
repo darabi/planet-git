@@ -35,9 +35,9 @@
              :validate (#'validate-length #'validate-email))))
   (if-valid-form
    (let ((login (create-user username fullname password email))
-         (session (hunchentoot:start-session)))
-     (setf (hunchentoot:session-value 'user session) login)
-     (hunchentoot:redirect (url-join (user-username login))))
+         (session (start-session)))
+     (setf (session-value 'user session) login)
+     (redirect (url-join (user-username login))))
    (render-standard-page (:title "Register")
      (form-fragment
       new-user-form
@@ -50,7 +50,7 @@
                         :name "new-user-form-submit" :value "Register"))))))
 
 
-(hunchentoot:define-easy-handler
+(define-easy-handler
     (login-page :uri "/login")
     ((login :parameter-type 'string :request-type :post)
      (password :parameter-type 'string :request-type :post)
@@ -84,7 +84,7 @@
                                :value "Login")))))))
 
 
-(hunchentoot:define-easy-handler
+(define-easy-handler
     (logout-page :uri "/logout") ()
   (logout-session)
-  (hunchentoot:redirect "/"))
+  (redirect "/"))
