@@ -51,6 +51,7 @@ which it is in fact.  Useful for defining syntactic constructs"
 	     (:script :type "text/javascript" :src "/static/js/jquery.js")
 	     (:script :type "text/javascript" :src "/static/js/bootstrap.js")
 	     (:script :type "text/javascript" :src "/static/js/bootstrap-modal.js")
+	     (:script :type "text/javascript" :src "/static/js/bootstrap-tab.js")
 	     (:style :type "text/css"
 		     (cl-who:str
 		      (css-lite:css
@@ -231,3 +232,31 @@ which it is in fact.  Useful for defining syntactic constructs"
 
 		 (:div :class "modal-footer"
 		       ,@buttons))))
+
+
+(def-who-macro tabs (&rest tabs)
+  "Generate a bootstrap tab system, the first element of the tabs is
+the NAME of the tab, it will be lowercased and used as the ID of each
+tab too.  The other elements of a tab are treated as the body of the
+tab."
+  ;; TODO if the tab name contains a space convert it to a -
+  (let ((default-tab (caar tabs)))
+    `(cl-who:htm
+      (:ul :class "nav nav-tabs"
+           ,@(mapcar
+              (lambda (tab)
+                (let ((tab-name (car tab)))
+                  `(:li
+                    :class ,(when (equal tab-name default-tab) "active")
+                    (:a :href ,(concatenate 'string "#" (string-downcase tab-name))
+                        :data-toggle "tab"
+                        (cl-who:str ,tab-name)))))
+              tabs))
+      (:div :class "tab-content"
+            ,@(mapcar
+               (lambda (tab)
+                 (let ((tab-name (car tab)))
+                   `(:div :id ,(string-downcase tab-name)
+                          :class ,(if (equal tab-name default-tab) "tab-pane active" "tab-pane")
+                          ,@(cdr tab))))
+               tabs)))))
