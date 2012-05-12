@@ -49,7 +49,7 @@ which it is in fact.  Useful for defining syntactic constructs"
 	     (:title "Planet Git - " ,title)
 	     (:link :rel "stylesheet" :href "/static/css/bootstrap.css")
 	     (:script :type "text/javascript" :src "/static/js/jquery.js")
-	     (:script :type "text/javascript" :src "/static/js/bootstrap.js")
+	     (:script :type "text/javascript" :src "/static/js/bootstrap-transition.js")
 	     (:script :type "text/javascript" :src "/static/js/bootstrap-modal.js")
 	     (:script :type "text/javascript" :src "/static/js/bootstrap-tab.js")
 	     (:style :type "text/css"
@@ -162,38 +162,38 @@ which it is in fact.  Useful for defining syntactic constructs"
 				    (unless (loginp)
 				      (cl-who:htm
 				       (modal ("login-modal"
-					       "Login"
-					       :buttons ((:a :href "#" :class "btn primary"
-							     :onclick (ps:ps-inline
-								       (ps:@
-									(ps:chain ($ "#login-modal-form" )
-										  (submit))))
+                               "Login"
+                               :buttons ((:a :href "#" :class "btn btn-primary"
+                                             :onclick (ps:ps-inline
+                                                       (ps:@
+                                                        (ps:chain ($ "#login-modal-form")
+                                                                  (submit))))
 
-							     "Login")
-							 (:a :href "#" :class "btn secondary"
-							     :onclick (ps:ps-inline
-								       (ps:@
-									(ps:chain ($ "#login-modal" )
-										  (modal "hide"))))
-							     "Cancel")))
-					 (:form :id "login-modal-form" :class "login-form"
-						:action "/login" :method "post"
-						(:ul
-						 (:input :type "hidden" :name "came-from"
-							 :value (hunchentoot:request-uri*))
-						 (:li "Username or Email:")
-						 (:li (:input :type "text" :name "login"))
-						 (:li "Password:")
-						 (:li (:input :type "text" :name "password")))
-						(:input :type "submit"
-							:style "visibility: hidden;"
-							:name "create"
-							:value "Create")))
+                                             "Login")
+                                         (:a :href "#" :class "btn"
+                                             :onclick (ps:ps-inline
+                                                       (ps:@
+                                                        (ps:chain ($ "#login-modal")
+                                                                  (modal "hide"))))
+                                             "Cancel")))
+                         (:form :id "login-modal-form" :class "login-form"
+                                :action "/login" :method "post"
+                                (:ul
+                                 (:input :type "hidden" :name "came-from"
+                                         :value (hunchentoot:request-uri*))
+                                 (:li "Username or Email:")
+                                 (:li (:input :type "text" :name "login"))
+                                 (:li "Password:")
+                                 (:li (:input :type "text" :name "password")))
+                                (:input :type "submit"
+                                        :style "visibility: hidden;"
+                                        :name "create"
+                                        :value "Create")))
 				       (:li (:a :href "/register" "Register"))
-				       (:li (:a :href "#login-modal"
-						:data-toggle "modal"
-						:data-backdrop "true"
-						"Login"))))))))
+				       (:li (:a :href "/login"
+                                :data-target "#login-modal"
+                                :data-toggle "modal"
+                                "Login"))))))))
 	     (:div :class "container"
 		   (:div :class "content"
 			 (:div :class "page-header"
@@ -221,15 +221,14 @@ which it is in fact.  Useful for defining syntactic constructs"
 
 (def-who-macro modal ((id heading &key buttons) &body body)
   (let ((buttons (if buttons buttons
-		     '((:a :href "#" :class "btn primary" "Primary")
-		       (:a :href "#" :class "btn secondary" "Secondary")))))
+		     '((:a :href "#" :class "btn btn-primary" "Primary")
+		       (:a :href "#" :class "btn" "Secondary")))))
     `(:div :id ,id :class "modal hide fade"
 		 (:div :class "modal-header"
-		       (:a :href "#" :class "close" "&times;")
+               (:button :class "close" :data-dismiss "modal" "&times;")
 		       (:h3 ,heading))
 		 (:div :class "modal-body"
 		       ,@body)
-
 		 (:div :class "modal-footer"
 		       ,@buttons))))
 
