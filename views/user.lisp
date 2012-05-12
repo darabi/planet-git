@@ -79,44 +79,58 @@ delete button"
 
 
 (def-who-macro* user-settings-page (user emails)
-		(render-standard-page (:title (cl-who:str (user-username user))
-				       :page-header
-				       ((:img :src (user-gravatar-url user :size 40))
-                        (:h1 (:a :href (url-join (user-username user))
-                                 (cl-who:str (user-username user)))
-					     (:small "Settings"))))
-          (:h2 "Personal Information")
-		  (form-fragment login-form
-				 (('fullname "Fullname:" "text" :value (user-fullname user)))
-                 :class "well form-stacked"
-				 :buttons ((:input :type "submit"
-						   :class "btn primary"
-						   :name "login-form-submit"
-						   :value "Save")))
-          (:h2 "Emails")
-          (:table :class "table"
-		  (labels ((email-fragment (emails)
-			     (let* ((email (car emails)) (rest (cdr emails)))
-			       (email-item-fragment user email)
-			       (when rest (email-fragment rest)))))
-		    (when emails (email-fragment emails))))
-		  (form-fragment email-form
-				 (('email "Email:" "text"))
-                 :class "well form-inline"
-				 :buttons ((:input :type "submit"
-						   :class "btn primary"
-						   :name "email-form-submit"
-						   :value "Add")))))
+  (render-standard-page (:title (cl-who:str (user-username user))
+                         :page-header
+                         ((:img :src (user-gravatar-url user :size 40))
+                          (:h1 (:a :href (url-join (user-username user))
+                                   (cl-who:str (user-username user)))
+                               (:small "Settings"))))
+    (tabs
+     ("Personal"
+      (:h2 "Personal Information")
+      (form-fragment login-form
+                     (('fullname "Fullname:" "text" :value (user-fullname user)))
+                     :class "well form-stacked"
+                     :buttons ((:input :type "submit"
+                                       :class "btn primary"
+                                       :name "login-form-submit"
+                                       :value "Save")))
+      (:h2 "Emails")
+      (:table :class "table"
+              (labels ((email-fragment (emails)
+                         (let* ((email (car emails)) (rest (cdr emails)))
+                           (email-item-fragment user email)
+                           (when rest (email-fragment rest)))))
+                (when emails (email-fragment emails))))
+      (form-fragment email-form
+                     (('email "Email:" "text"))
+                     :class "well form-inline"
+                     :buttons ((:input :type "submit"
+                                       :class "btn primary"
+                                       :name "email-form-submit"
+                                       :value "Add"))))
+     ("Keys"
+      (:h2 "Keys")
+      (form-fragment key-form
+                     (('key "Key:" "textarea" :class "input-xlarge" :rows 3))
+                     :class "well form-stacked"
+                     :buttons ((:input :type "submit"
+                                       :class "btn primary"
+                                       :name "key-form-submit"
+                                       :value "Save")))))))
 
 
 (define-form-handler (user-settings-view :uri "^/(\\w+)/settings/?$"
                                          :args (username))
-    ((email-form
+    ((:email-form
       (email :parameter-type 'string :request-type :post
              :validate (#'validate-length #'validate-email)))
-     (login-form
+     (:login-form
       (fullname :parameter-type 'string :request-type :post
-                :validate (#'validate-length))))
+                :validate (#'validate-length)))
+     (:key-form
+      (key :parameter-type 'string :request-type :post
+                :validate (#'validate-length #'validate-key))))
   (let*
       ((user (car (postmodern:select-dao 'login (:= 'username username))))
        (is-current-user (when user
@@ -128,15 +142,18 @@ delete button"
         (progn
           (setf *current-form*
                 (cond-forms
-                 (email-form
+                 (:email-form
                   (postmodern:insert-dao
                    (make-instance 'email
                                   :user-id (slot-value (loginp) 'id)
                                   :email email)))
-                 (login-form
+                 (:login-form
                   (let ((user (postmodern:get-dao 'login (slot-value user 'id))))
                     (setf (slot-value user 'fullname) fullname)
-                    (postmodern:update-dao user)))))
+                    (postmodern:update-dao user)))
+                 (:key-form
+                  (postmodern:insert-dao
+                   (key-parse key)))))
           (let ((emails (postmodern:select-dao 'email (:= 'user-id (slot-value user 'id)))))
             (user-settings-page user emails)))
         (setf (hunchentoot:return-code*) hunchentoot:+http-forbidden+))))

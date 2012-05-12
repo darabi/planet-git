@@ -46,6 +46,10 @@
   (unless (cl-ppcre:scan "^[^@]+@[^@]+[.][^@]+$" (hunchentoot:parameter fieldname))
     (concatenate 'string "Error, " fieldname " is not a valid email address.")))
 
+(defun validate-key (fieldname)
+  (unless (cl-ppcre:scan "^\\S*\\s+\\S*\\s+\\S*$" (hunchentoot:parameter fieldname))
+    (concatenate 'string "Error, " fieldname " is not a valid ssh-key.")))
+
 (defun validate-password (fieldname)
   (when (equal (hunchentoot:parameter fieldname)
 	       (hunchentoot:parameter 'password))

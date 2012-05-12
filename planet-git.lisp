@@ -60,6 +60,8 @@
 (defclass login ()
   ((id :col-type serial :accessor id)
    (fullname :col-type string :initarg :fullname :accessor user-fullname)
+   (location :col-type (or postmodern:db-null string)
+             :initarg :location :accessor user-location)
    (username :col-type string :initarg :username :accessor user-username)
    (password :col-type string :initarg :password :accessor user-password))
   (:metaclass postmodern:dao-class)
@@ -76,9 +78,9 @@
   (:metaclass postmodern:dao-class)
   (:keys id user-id))
 
-(defclass keys ()
+(defclass key ()
   ((id :col-type serial :accessor id)
-   (user-id :col-type integer :initarg :user-id :accessor keys-user-id)
+   (user-id :col-type integer :initarg :user-id :accessor key-user-id)
    (title :col-type string :initarg :title :accessor key-title)
    (type :col-type string :initarg :type :accessor key-type)
    (key :col-type string :initarg :key :accessor key-value))
@@ -119,11 +121,20 @@ be used to set the requested size."
     (postmodern:execute (postmodern:dao-table-definition 'login)))
   (unless (postmodern:table-exists-p 'email)
     (postmodern:execute (postmodern:dao-table-definition 'email)))
-  (unless (postmodern:table-exists-p 'keys)
-    (postmodern:execute (postmodern:dao-table-definition 'keys)))
+  (unless (postmodern:table-exists-p 'key)
+    (postmodern:execute (postmodern:dao-table-definition 'key)))
   (unless (postmodern:table-exists-p 'repository)
     (postmodern:execute (postmodern:dao-table-definition 'repository))))
 
+(defun key-parse (key)
+  "parse a KEY string and return a new KEYS instance, if there is a
+  current user then set them as the foreign key."
+  (cl-ppcre:register-groups-bind
+      (type key title)
+      ("^(\\S*)\\s+(\\S*)\\s+(\\S*)$" key)
+    (eval
+     `(make-instance 'key :type ,type :key ,key :title ,title
+                     ,@(when (loginp) (list :user-id (id (loginp))))))))
 
 ;;; Path
 
