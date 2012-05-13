@@ -22,60 +22,60 @@
 (defvar *client-ip* "UNKNOWN")
 
 (defvar *month-names* '("Zero" "Jan" "Feb" "Mar" "Apr" "May" "Jun"
-	"Jul" "Aug" "Sep" "Oct" "Nov" "Dec"))
+                        "Jul" "Aug" "Sep" "Oct" "Nov" "Dec"))
 
 (with-open-file (stream *debug-log-file* :direction :output :if-exists :append :if-does-not-exist :create)
   (let ((*standard-output* stream)
-	(*error-output* stream))
+        (*error-output* stream))
     (let ((quicklisp-init (merge-pathnames "quicklisp/setup.lisp"
-					   (user-homedir-pathname))))
+                                           (user-homedir-pathname))))
       (when (probe-file quicklisp-init)
-	(load quicklisp-init)))))
+        (load quicklisp-init)))))
 
 (with-open-file (stream *debug-log-file* :direction :output :if-exists :append :if-does-not-exist :create)
   (let ((*standard-output* stream)
-	(*error-output* stream))
+        (*error-output* stream))
     (eval '(ql:quickload 'cl-ppcre))))
 
-(defmacro log-msg (message &rest format-args)
+(defmacro log-msg (level message &rest format-args)
   `(with-open-file (stream *log-file* :direction :output :if-exists :append :if-does-not-exist :create)
-    (multiple-value-bind
-	  (second minute hour date month)
-	(get-decoded-time)
-      (let ((log-message
-	      (concatenate 'string "~2,'0d ~d ~2,'0d:~2,'0d:~2,'0d ~a "
-			   ,message "~%")))
-	(format stream log-message
-	      (nth month *month-names*)
-	      date
-	      hour
-	      minute
-	      second
-	      *client-ip*
-	      ,@format-args)))))
+     (multiple-value-bind
+           (second minute hour date month)
+         (get-decoded-time)
+       (let ((log-message
+               (concatenate 'string "~2,'0d ~d ~2,'0d:~2,'0d:~2,'0d ~a ~S:"
+                            ,message "~%")))
+         (format stream log-message
+                 (nth month *month-names*)
+                 date
+                 hour
+                 minute
+                 second
+                 *client-ip*
+                 ,level
+                 ,@format-args)))))
 
 (let* ((command (sb-unix::posix-getenv "SSH_ORIGINAL_COMMAND"))
        (ssh-client (sb-unix::posix-getenv "SSH_CLIENT"))
        (*client-ip* (subseq ssh-client 0 (position #\Space ssh-client))))
   (unless (cl-ppcre:register-groups-bind
-	      (git-command repository)
-	      ("^([^ ]+) '(.+)'$" command)
-	    (if (and (find git-command
-			   (list "git-receive-pack" "git-upload-pack" "git-upload-archive")
-			   :test #'equal)
-		     repository)
-		(progn
-		  (log-msg "INFO: Running ~a on repository, ~a" git-command repository)
-		  (let ((process (sb-ext:run-program "/usr/bin/git" (list "shell" "-c" command) :input t :output t)))
-		    (if (> (sb-ext:process-exit-code process) 0)
-			(log-msg "ERROR: Process exited with status: ~a"
-				 (sb-ext:process-exit-code process))
-			(log-msg "INFO: Process exited with status: ~a"
-				 (sb-ext:process-exit-code process))))
-		  t) ; return success
-		(progn
-		  (log-msg "ERROR: invalid command: ~a" command)
-		  (print "ERROR: Invalid Command." *error-output*))))
+              (git-command repository)
+              ("^([^ ]+) '(.+)'$" command)
+            (if (and (find git-command
+                           (list "git-receive-pack" "git-upload-pack" "git-upload-archive")
+                           :test #'equal)
+                     repository)
+                (progn
+                  (log-msg 'info "Running ~a on repository, ~a" git-command repository)
+                  (let ((process (sb-ext:run-program "/usr/bin/git" (list "shell" "-c" command) :input t :output t)))
+                    (log-msg (if (> (sb-ext:process-exit-code process) 0)
+                                        'error 'info)
+                             "Process exited with status: ~a"
+                             (sb-ext:process-exit-code process)))
+                  t) ; return success
+                (progn
+                  (log-msg 'error "Invalid command: ~a" command)
+                  (print "Invalid Command." *error-output*))))
     (progn
-      (log-msg "ERROR: invalid command: ~a" command)
-      (print "ERROR: Invalid Command." *error-output*))))
+      (log-msg 'error "Invalid command: ~a" command)
+      (print "Invalid Command." *error-output*))))
