@@ -18,19 +18,21 @@
 
 (asdf:defsystem #:planet-git
   :serial t
-  :depends-on (#:hunchentoot
+  :depends-on (#:anaphora
+               #:hunchentoot
+               #:chunga
                #:cl-who
                #:cl-git
                #:postmodern
                #:cl-ppcre
-               #:cl-fad
                #:css-lite
+               #:database-migrations
                #:parenscript
-               #:py-configparser
                #:unix-options
-               #:md5
-               #:database-migrations)
-  :components ((:file "package")
+               #:md5)
+  :components ((:static-file "planet-git.asd")
+               (:file "package")
+               (:file "config")
                (:file "compat")
                (:file "utils")
                (:file "easy-handlers")
@@ -38,8 +40,10 @@
                (:file "templates")
                (:file "forms")
                (:file "validators")
-               (:file "planet-git")
-               (:file "views/home")
-               (:file "views/user")
-               (:file "views/registration")
-               (:file "views/repository")))
+               (:module "views" :depends-on ("forms" "validators" "templates")
+                        :components
+                        ((:file "home")
+                         (:file "user")
+                         (:file "registration")
+                         (:file "repository")))
+               (:file "planet-git" :depends-on ("views"))))

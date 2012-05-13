@@ -702,3 +702,19 @@ INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
 WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+----------------------------------------------------------------------
+
+The configuration utility functions were copied from
+
+Elephant: an object-oriented database for Common Lisp
+
+Copyright (c) 2004 by Andrew Blumberg and Ben Lee
+<ablumberg@common-lisp.net> <blee@common-lisp.net>
+
+Portions Copyright (c) 2005-2007 by Robert Read and Ian Eslick
+<rread common-lisp net> <ieslick common-lisp net>
+
+Elephant users are granted the rights to distribute and use this software
+as governed by the terms of the Lisp Lesser GNU Public License
+(http://opensource.franz.com/preamble.html), also known as the LLGPL.

@@ -31,7 +31,7 @@
 
 (define-rest-handler (user-page :uri "^/(\\w+)/?$" :args (username)) ()
   (let
-      ((user (car (postmodern:select-dao 'login (:= 'username username)))))
+      ((user (car (select-dao 'login (:= 'username username)))))
     (if user
 	(let ((username (slot-value user 'username))
 	      (is-current-user (equal (slot-value user 'username)
@@ -42,7 +42,7 @@
                            (cl-who:htm (:a :class "btn primary pull-right"
                                            :href "/repository/new"
                                            "Add Repository"))))
-	    (let ((repositories (postmodern:select-dao
+	    (let ((repositories (select-dao
 				 'repository (:= 'owner-id (slot-value user 'id)))))
 	      (hunchentoot:log-message* hunchentoot:*lisp-warnings-log-level* "Repositories ~a" repositories)
 	      (labels ((repository-fragment (repos)
@@ -58,7 +58,7 @@
 						       public))
 			   (when rest (repository-fragment rest)))))
 		(when repositories (repository-fragment repositories))))))
-	(setf (hunchentoot:return-code*) hunchentoot:+http-not-found+))))
+	(setf (return-code*) +http-not-found+))))
 
 
 (def-who-macro* email-item-fragment (user email)
@@ -154,7 +154,7 @@ delete button"
       (key :parameter-type 'string :request-type :post
                 :validate (#'validate-length #'validate-key))))
   (let*
-      ((user (car (postmodern:select-dao 'login (:= 'username username))))
+      ((user (car (select-dao 'login (:= 'username username))))
        (is-current-user (when user
                           (equal
                            (slot-value user 'username)
@@ -184,7 +184,7 @@ delete button"
 
 (define-rest-handler (user-email-delete :uri "^/(\\w+)/settings/email/(\\w+)/delete/?$" :args (username email-id)) ()
   (let*
-      ((user (car (postmodern:select-dao 'login (:= 'username username))))
+      ((user (car (select-dao 'login (:= 'username username))))
        (is-current-user (when user
 			  (equal
 			   (user-username user)
@@ -192,7 +192,7 @@ delete button"
 			     (user-username (loginp)))))))
     (if is-current-user
 	(let ((email (car
-		      (postmodern:select-dao 'email
+		      (select-dao 'email
 					     (:and (:= 'id email-id) (:= 'user-id (id user)))))))
 	  (if email
 	      (postmodern:delete-dao email)
@@ -224,7 +224,7 @@ delete button"
                       :args (username))
     ()
   (let*
-      ((user (car (postmodern:select-dao 'login (:= 'username username))))
+      ((user (car (select-dao 'login (:= 'username username))))
        (is-current-user (when user (equal (slot-value user 'username)
 					  (when (loginp) (slot-value (loginp) 'username))))))
 					;    (if is-current-user)

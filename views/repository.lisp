@@ -61,10 +61,10 @@
      (public :parameter-type 'boolean))
   (let* ((errors (validate-newrepository)))
     (if (and (= (hash-table-count errors) 0)
-	     (eq (hunchentoot:request-method*) :post))
+	     (eq (request-method*) :post))
 	(progn
 	  (create-repository name (loginp) public)
-	  (hunchentoot:redirect (concatenate 'string "/"
+	  (redirect (concatenate 'string "/"
 					     (slot-value (loginp) 'username) "/"name "/")))
       (render-standard-page (:title "New Repository")
 	(:form :action "" :method "post"
@@ -85,8 +85,8 @@
 
 (defun repository-page (username repository-name &key branch)
   (let*
-      ((user (car (postmodern:select-dao 'login (:= 'username username))))
-       (repository (car (postmodern:select-dao
+      ((user (car (select-dao 'login (:= 'username username))))
+       (repository (car (select-dao
 			 'repository (:and
 				      (:= 'owner-id (slot-value user 'id))
 				      (:= 'name repository-name)))))
@@ -165,5 +165,5 @@ git push origin master" *git-ssh-host* (user-username user) (repository-name rep
 		  (:div :class "well"
 			(:h2 "Under Construction."))
 		  ))
-		(t (setf (hunchentoot:return-code*) hunchentoot:+http-not-found+))))))
-	(setf (hunchentoot:return-code*) hunchentoot:+http-not-found+))))
+		(t (setf (return-code*) +http-not-found+))))))
+	(setf (return-code*) +http-not-found+))))

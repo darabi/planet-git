@@ -4,15 +4,44 @@
   project could be described as a stub.  There is still much work to do.
   Be aware this is the first project I ever done with Common Lisp, so if
   your eyes begin to bleed it's not my fault. You have been warned.
+
 ** Installation
+
    Currently this application isn't ready for any kind of real
    deployment.  So there will only be configuration instructions until
    this changes.
+
+*** Prerequisites
+
+    The following configuration on Linux (Ubuntu Oneiric Ocelot) is
+    known to work:
+
+    - PostgreSQL (tested with version 9.1.3)
+    - SBCL 1.0.56 (sbcl-1.0.56.55-b06f72f-linux-x86)
+    - cl-git (git repo 2012-05-02)
+    - Hunchentoot (1.1.0)
+    - Postmodern (darcs repo)
+
 *** Configuration
-    Configuration is done with a ini file.  Please look to the
-    config.ini file in the root of the project for further details.
+
+    Configuration options are defined in a file called config.sexp. A
+    template is provided in config.sexp.in. Please copy that file to a
+    new file config.sexp and adapt the values to your settings.
+
+**** Create a PostgreSQL database
+
+     You have to create an empty PostgreSQL database before running
+     planet-git for the first time. On most Linux distros, there is a
+     user postgres, who is privileged to create users and databases:
+
+     #+BEGIN_EXAMPLE
+     sudo su - postgres
+     createuser gitui -P
+     createdb -O gitui -E UTF-8 planet_git
+     #+END_EXAMPLE
 
 *** Git Hook
+
     The git-shell.lisp script wraps the git shell command and records
     the git events.  It needs to be added to the .ssh/authorized_keys
     of the git user.  This will need to be done manually until this is
@@ -23,9 +52,20 @@
     ssh-rsa AAAAB... russell@marvin
 
 ** Developing
-   Getting the dev server running
 
-   ./develop.lisp -c ./config.ini
+   To start hacking on planet-git, make sure the dependencies which
+   are declared in the asdf file are loadable by asdf. With the
+   correct configuration (cf. above), you should be able to start and
+   stop the server with:
+
+   #+BEGIN_SRC common-lisp
+   (asdf:oos 'asdf:load-op :planet-git)
+   (planet-git:startup)
+
+   ; ...
+
+   (planet-git:shutdown)
+   #+END_SRC
 
 *** Definitions
 

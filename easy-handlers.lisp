@@ -47,7 +47,7 @@ NIL unconditionally."
     (string argument)
     (character (and (= (length argument) 1)
                     (char argument 0)))
-    (integer (ignore-errors* (parse-integer argument :junk-allowed t)))
+    (integer (ignore-errors (parse-integer argument :junk-allowed t)))
     (keyword (as-keyword argument :destructivep nil))
     (boolean t)
     (otherwise (funcall type argument))))
@@ -113,15 +113,15 @@ REQUEST-TYPE is one of :GET, :POST, or :BOTH."
   (when (member parameter-type '(list array hash-table))
     (setq parameter-type (list parameter-type 'string)))
   (let ((parameter-reader (ecase request-type
-                              (:get #'hunchentoot:get-parameter)
-                              (:post #'hunchentoot:post-parameter)
-                              (:both #'hunchentoot:parameter)))
+                              (:get #'get-parameter)
+                              (:post #'post-parameter)
+                              (:both #'parameter)))
         (parameters (and (listp parameter-type)
                          (case request-type
-                           (:get (hunchentoot:get-parameters*))
-                           (:post (hunchentoot:post-parameters*))
-                           (:both (append (hunchentoot:get-parameters*)
-					  (hunchentoot:post-parameters*)))))))
+                           (:get (get-parameters*))
+                           (:post (post-parameters*))
+                           (:both (append (get-parameters*)
+					  (post-parameters*)))))))
     (cond ((atom parameter-type)
            (compute-simple-parameter parameter-name parameter-type parameter-reader))
           ((and (null (cddr parameter-type))
@@ -135,7 +135,7 @@ REQUEST-TYPE is one of :GET, :POST, or :BOTH."
            (compute-hash-table-parameter parameter-name (second parameter-type) parameters
                                          (or (third parameter-type) 'string)
                                          (or (fourth parameter-type) 'equal)))
-          (t (hunchentoot:parameter-error "Don't know what to do with parameter type ~S."
+          (t (parameter-error "Don't know what to do with parameter type ~S."
 					  parameter-type)))))
 
 (defun make-defun-parameter (description default-parameter-type default-request-type)
@@ -148,7 +148,7 @@ are the global default values."
   (destructuring-bind (parameter-name &key (real-name (compute-real-name parameter-name))
                                            parameter-type init-form request-type)
       description
-    `(,parameter-name (or (and (boundp 'hunchentoot:*request*)
+    `(,parameter-name (or (and (boundp '*request*)
                                (compute-parameter ,real-name
                                                   ,(or parameter-type default-parameter-type)
                                                   ,(or request-type default-request-type)))
