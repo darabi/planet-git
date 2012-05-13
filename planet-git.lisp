@@ -108,15 +108,15 @@
 
 
 (defmethod repository-real-path ((repo repository))
-  (merge-pathnames (slot-value repo 'path)
-		   *repository-directory*))
+  "Return the calculated path to the repository"
+  (merge-pathnames (repository-path repo) *repository-directory*))
 
 
 (defmethod user-primary-email ((user login))
   (car (postmodern:select-dao 'email (:and (:= 'user-id (id user)) (:= 'primary t)))))
 
 (defmethod user-gravatar-url ((user login) &key (size 80))
-  "return the url to a USER's gravatar, an optional SIZE keyword can
+  "Return the url to a USER's gravatar, an optional SIZE keyword can
 be used to set the requested size."
   (gravatar-url (email-address (user-primary-email user)) :size size))
 
@@ -131,7 +131,7 @@ be used to set the requested size."
     (postmodern:execute (postmodern:dao-table-definition 'repository))))
 
 (defun key-parse (key)
-  "parse a KEY string and return a new KEYS instance, if there is a
+  "Parse a KEY string and return a new KEYS instance, if there is a
   current user then set them as the foreign key."
   (cl-ppcre:register-groups-bind
       (type key title)
@@ -165,7 +165,7 @@ be used to set the requested size."
 
 
 (defun gravatar-url (email &key (size 80))
-  "return the gravatar url for an EMAIL address, an optional SIZE
+  "Return the gravatar url for an EMAIL address, an optional SIZE
 keyword can be used to set the requested size."
     (concatenate 'string
 		 "http://www.gravatar.com/avatar/"
@@ -176,6 +176,7 @@ keyword can be used to set the requested size."
 
 
 (defun url-join (&rest rest)
+  "Join components of a url together with / characters."
   (let ((sequence (mapcan #'(lambda (x) (list (string x) "/")) rest)))
     (reduce #'(lambda (current next)
 		(if (stringp next)
@@ -204,6 +205,8 @@ aproprate branch to display."
 
 
 (defun compare-password-hash (passwordhash password)
+  "This is boiler plate that will eventually compare the encrypted
+passwords"
   (if (string= passwordhash password)
       T
       nil))
@@ -223,7 +226,7 @@ aproprate branch to display."
 
 
 (defun login-session (login password)
-  "log a user in to a session, the user object will be stored as the
+  "Log a user in to a session, the user object will be stored as the
 value of the session."
   (let ((user-id (verify-password login password)))
     (if user-id
@@ -236,18 +239,20 @@ value of the session."
 
 
 (defun logout-session ()
-  "remove the user from the current session-login"
+  "Remove the user from the current session-login"
   (hunchentoot:delete-session-value 'user))
 
 
 (defun loginp ()
-  "if there is a current session then reurn its value which will be a
+  "If there is a current session then reurn its value which will be a
 user object."
   (when (boundp 'hunchentoot:*session*)
     (hunchentoot:session-value 'user)))
 
 
-(defun create-repository (name owner public)
+(defun create-repository (name owner &optional (public nil))
+  "Create a new repository with a NAME and an OWNER the repository
+will not be PUBLIC by default by default."
   (let* ((username  (slot-value owner 'username))
 	 (relative-path (make-pathname :directory
 					       (list ':relative
