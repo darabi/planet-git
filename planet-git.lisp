@@ -28,7 +28,9 @@
 
 ;;; Global Config
 
-(defvar *repository-directory* #p"/tmp/")
+(defvar *repository-directory* #P"/tmp/")
+(defvar *git-user-homedir* #P"/home/git/")
+(defvar *git-shell-path* #P"/home/git/")
 (defvar *git-ssh-host* "git@localhost")
 
 ;;; Webserver
@@ -137,6 +139,15 @@ be used to set the requested size."
     (eval
      `(make-instance 'key :type ,type :key ,key :title ,title
                      ,@(when (loginp) (list :user-id (id (loginp))))))))
+
+(defmethod key-to-authorizedkeys ((key key))
+  "Add the users authorized KEY to the authorized_keys file."
+  (with-open-file (stream (merge-pathnames ".ssh/authorized_keys" *git-user-homedir*)
+                          :direction :output
+                          :if-exists :append)
+    (format stream
+            "command=\"KEY_ID=~A ~A\",no-port-forwarding,no-agent-forwarding,no-X11-forwarding,no-pty ~A ~A ~A~%"
+            (id key) *git-shell-path* (key-type key) (key-value key) (key-title key))))
 
 ;;; Path
 

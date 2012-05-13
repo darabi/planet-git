@@ -117,7 +117,8 @@ the LIST"
 
 (flet ((get-option (option)
           (py-configparser:get-option *config* "planet-git" option)))
-  (setq planet-git:*repository-directory* (pathname (get-option "repository-path")))
+  (setq planet-git:*repository-directory* (pathname (get-option "git-user-homedir")))
+  (setq planet-git:*git-user-homedir* (pathname (get-option "git-user-homedir")))
   (setq planet-git:*git-ssh-host* (pathname (get-option "git-ssh-host"))))
 
 

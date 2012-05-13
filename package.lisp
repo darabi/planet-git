@@ -20,5 +20,6 @@
   (:use #:cl)
   (:export
    #:*repository-directory*
+   #:*git-user-homedir*
    #:*git-ssh-host*
    #:create-tables))
