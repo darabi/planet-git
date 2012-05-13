@@ -63,11 +63,13 @@
   (set-option "git-shell" "log-file" ".git-shell.log")
   (set-option "git-shell" "planet-git-url" "http://localhost:8000"))
 
+(defmacro print-error (control-string &rest format-arguments)
+  `(format *error-output* ,control-string ,@format-arguments))
 
 (handler-case
     (read-files *config* (list (truename (merge-pathnames (pathname ".git-shell.conf") (user-homedir-pathname)))))
   (sb-int:simple-file-error ()
-    (print "This copy of planet-git isn't correctly configured. Unable to find git-shell config." *error-output*)
+    (print-error "This copy of planet-git isn't correctly configured. Unable to find git-shell config.~%")
     (quit)))
 
 
@@ -133,12 +135,14 @@
                     (progn
                       (log-msg 'info "Access denied to repository ~a from ip ~a with key ~a"
                                repository client-ip key-id)
-                      (print "Access Denied." *error-output*)))
+                      (print-error "Access Denied.~%")
+                      t))
                 ;; if the command isn't in the list of allowed cammands
                 (progn
                   (log-msg 'error "Invalid command: ~a" command)
-                  (print "Invalid Command." *error-output*))))
+                  (print-error "Invalid Command.~%")
+                  t)))
     ;; if the command doesn't match regular expression then error
     (progn
-      (log-msg 'error "Invalid command: ~a" command)
-      (print "Invalid Command." *error-output*))))
+      (log-msg 'error "Badly formed command: ~a" command)
+      (print-error "Access Denied.~%"))))
