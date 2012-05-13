@@ -16,6 +16,9 @@
 ;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 ;;;; git-shell.lisp
+
+
+
 (defvar *debug-log-file* "/tmp/debug-log.txt")
 (defvar *log-file* "/tmp/log.txt")
 
@@ -30,7 +33,7 @@
 (with-open-file (stream *debug-log-file* :direction :output :if-exists :append :if-does-not-exist :create)
   (let ((*standard-output* stream)
         (*error-output* stream))
-    (let ((quicklisp-init (merge-pathnames "quicklisp/setup.lisp"
+    (let ((quicklisp-init (merge-pathnames ".quicklisp/setup.lisp"
                                            (user-homedir-pathname))))
       (when (probe-file quicklisp-init)
         (load quicklisp-init)))))
@@ -40,9 +43,43 @@
   (let ((*standard-output* stream)
         (*error-output* stream))
     (eval '(ql:quickload 'cl-ppcre))
-    (eval '(ql:quickload 'drakma))))
+    (eval '(ql:quickload 'drakma))
+    (eval '(ql:quickload 'py-configparser))))
 
 (use-package 'drakma)
+(use-package 'py-configparser)
+
+;; define some parameters for easier update
+(defparameter *config* (make-config))
+
+;; set some default settings
+(flet ((set-option (section option value)
+         (set-option *config* section option value))
+       (add-section (section)
+         (add-section *config* section)))
+  ;; default swank configuration
+  (add-section "git-shell")
+  (set-option "git-shell" "debug-log-file" ".git-shell-debug.log")
+  (set-option "git-shell" "log-file" ".git-shell.log")
+  (set-option "git-shell" "planet-git-url" "http://localhost:8000"))
+
+
+(handler-case
+    (read-files *config* (list (truename (merge-pathnames (pathname ".git-shell.conf") (user-homedir-pathname)))))
+  (sb-int:simple-file-error ()
+    (print "This copy of planet-git isn't correctly configured. Unable to find git-shell config." *error-output*)
+    (quit)))
+
+
+(flet ((get-option (option)
+         (get-option *config* "git-shell" option)))
+  (flet
+      ((get-path (option)
+         (merge-pathnames (pathname (get-option option)) (user-homedir-pathname))))
+    (setq *debug-log-file* (get-path "debug-log-file"))
+    (setq *log-file* (get-path "log-file"))
+    (setq *planet-git-url* (get-option "planet-git-url"))))
+
 
 (defmacro format-string (control-string &rest format-arguments)
   `(with-output-to-string (stream)
