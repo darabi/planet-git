@@ -25,7 +25,7 @@
 	(pseudo-html-form (if (stringp documentation) pseudo-html-form documentation)))
     `(defmacro ,name (,@args)
        ,documentation
-       `(cl-who:with-html-output (*standard-output* nil)
+       `(with-html-output (*standard-output* nil)
 	  ,,pseudo-html-form))))
 
 (defmacro def-who-macro* (name (&rest args) &optional documentation pseudo-html-form)
@@ -35,11 +35,11 @@ which it is in fact.  Useful for defining syntactic constructs"
 	(pseudo-html-form (if (stringp documentation) pseudo-html-form documentation)))
     `(defun ,name (,@args)
        ,documentation
-       (cl-who:with-html-output (*standard-output* nil)
+       (with-html-output (*standard-output* nil)
 	 ,pseudo-html-form))))
 
 (defmacro render-standard-page ((&key title (subtitle "") (body-class "span10") page-header) &body body)
-  `(cl-who:with-html-output-to-string (*standard-output* nil :prologue t)
+  `(with-html-output-to-string (*standard-output* nil :prologue t)
      (:html :xmlns "http://www.w3.org/1999/xhtml"
 	    :xml\:lang "en"
 	    :lang "en"
@@ -53,8 +53,8 @@ which it is in fact.  Useful for defining syntactic constructs"
 	     (:script :type "text/javascript" :src "/static/js/bootstrap-modal.js")
 	     (:script :type "text/javascript" :src "/static/js/bootstrap-tab.js")
 	     (:style :type "text/css"
-		     (cl-who:str
-		      (css-lite:css
+		     (str
+		      (css
 			(("html, body")
 			 (:background-color "#eee"))
 			((".container > footer p")
@@ -155,12 +155,12 @@ which it is in fact.  Useful for defining syntactic constructs"
 			       (:ul :class "nav pull-right"
 				    (if (loginp)
 					(let ((username (slot-value (loginp) 'username)))
-					  (cl-who:htm
-					   (:li (:a :href (url-join username) (cl-who:str username)))
-					   (:li (:a :href (url-join username "settings") (cl-who:str "Settings")))
+					  (htm
+					   (:li (:a :href (url-join username) (str username)))
+					   (:li (:a :href (url-join username "settings") (str "Settings")))
 					   (:li (:a :href "/logout" "Logout")))))
 				    (unless (loginp)
-				      (cl-who:htm
+				      (htm
 				       (modal ("login-modal"
                                "Login"
                                :buttons ((:a :href "#" :class "btn btn-primary"
@@ -180,7 +180,7 @@ which it is in fact.  Useful for defining syntactic constructs"
                                 :action "/login" :method "post"
                                 (:ul
                                  (:input :type "hidden" :name "came-from"
-                                         :value (hunchentoot:request-uri*))
+                                         :value (request-uri*))
                                  (:li "Username or Email:")
                                  (:li (:input :type "text" :name "login"))
                                  (:li "Password:")
@@ -198,8 +198,8 @@ which it is in fact.  Useful for defining syntactic constructs"
 		   (:div :class "content"
 			 (:div :class "page-header"
 			       ,(if page-header
-                        `(cl-who:htm ,page-header)
-                        `(cl-who:htm (:h1 ,title
+                        `(htm ,page-header)
+                        `(htm (:h1 ,title
                                           (:small ,subtitle)))))
 			 (:div :class "row"
 			       (:div :class ,body-class
@@ -209,12 +209,12 @@ which it is in fact.  Useful for defining syntactic constructs"
 (defmacro render-user-page ((user &key title subtitle (body-class "span10") extra-header) &body body)
   `(render-standard-page
        (:body-class ,body-class
-        :title (cl-who:str (slot-value ,user 'username))
+        :title (str (slot-value ,user 'username))
         :page-header
         ((:img :src (user-gravatar-url ,user :size 40))
          (:h1 ,(or title `(:a :href (url-join (slot-value ,user 'username))
-                           (cl-who:str (slot-value ,user 'username))))
-         (:small ,(or subtitle `(cl-who:str (slot-value ,user 'fullname)))))
+                           (str (slot-value ,user 'username))))
+         (:small ,(or subtitle `(str (slot-value ,user 'fullname)))))
          ,(when extra-header extra-header)))
      ,@body))
 
@@ -240,7 +240,7 @@ tab too.  The other elements of a tab are treated as the body of the
 tab."
   ;; TODO if the tab name contains a space convert it to a -
   (let ((default-tab (caar tabs)))
-    `(cl-who:htm
+    `(htm
       (:ul :class "nav nav-tabs"
            ,@(mapcar
               (lambda (tab)
@@ -249,7 +249,7 @@ tab."
                     :class ,(when (equal tab-name default-tab) "active")
                     (:a :href ,(concatenate 'string "#" (string-downcase tab-name))
                         :data-toggle "tab"
-                        (cl-who:str ,tab-name)))))
+                        (str ,tab-name)))))
               tabs))
       (:div :class "tab-content"
             ,@(mapcar

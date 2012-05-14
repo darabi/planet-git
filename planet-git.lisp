@@ -64,7 +64,7 @@
 (defclass login ()
   ((id :col-type serial :accessor id)
    (fullname :col-type string :initarg :fullname :accessor user-fullname)
-   (location :col-type (or postmodern:db-null string)
+   (location :col-type (or db-null string)
              :initarg :location :accessor user-location)
    (username :col-type string :initarg :username :accessor user-username)
    (password :col-type string :initarg :password :accessor user-password))
@@ -134,7 +134,7 @@ be used to set the requested size."
 (defun key-parse (key)
   "Parse a KEY string and return a new KEYS instance, if there is a
   current user then set them as the foreign key."
-  (cl-ppcre:register-groups-bind
+  (register-groups-bind
       (type key title)
       ("^(\\S*)\\s+(\\S*)\\s+(\\S*)$" key)
     (eval
@@ -171,7 +171,7 @@ keyword can be used to set the requested size."
     (concatenate 'string
 		 "http://www.gravatar.com/avatar/"
 		 (format nil "~(~{~2,'0X~}~)"
-			 (map 'list #'identity (md5:md5sum-sequence (coerce email 'simple-string))))
+			 (map 'list #'identity (md5sum-sequence (coerce email 'simple-string))))
 		 "?s="
 		 (prin1-to-string size)))
 
@@ -268,7 +268,7 @@ will not be PUBLIC by default by default."
 		    :name name
 		    :path (namestring relative-path)
 		    :public public))
-    (cl-git:ensure-git-repository-exist path t)))
+    (ensure-git-repository-exist path t)))
 
 
 (defun create-user (username fullname password email)

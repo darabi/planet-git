@@ -51,7 +51,7 @@ DEFINE-REST-HANDLER.")
                                                              default-parameter-type
                                                              default-request-type)))
          ,(if args
-              `(cl-ppcre:register-groups-bind ,args
+              `(register-groups-bind ,args
                    (,uri (request-uri*))
                  ,@body)
               `(progn ,@body))))))
@@ -63,7 +63,7 @@ defined with DEFINE-REST-HANDLER, if there is one."
      when (and (or (eq acceptor-names t)
                    (find (acceptor-name *acceptor*) acceptor-names :test #'eq))
                (cond ((stringp uri)
-                      (let ((scanner (cl-ppcre:create-scanner uri)))
-                        (cl-ppcre:scan scanner (script-name request))))
+                      (let ((scanner (create-scanner uri)))
+                        (scan scanner (script-name request))))
                      (t (funcall uri request))))
      do (return rest-handler)))

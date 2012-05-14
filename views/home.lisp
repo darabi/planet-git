@@ -21,12 +21,12 @@
 
 (def-who-macro user-item-fragment (user)
   "Create a users description for the front page"
-  `(cl-who:htm
+  `(htm
     (:div :class "well user"
-	  (:a :href (cl-who:str (url-join (slot-value ,user 'username)))
+	  (:a :href (str (url-join (slot-value ,user 'username)))
           (:img :src (user-gravatar-url ,user :size 40))
 	      (:h3 :class "name"
-		   (cl-who:str (slot-value ,user 'username)))))))
+		   (str (slot-value ,user 'username)))))))
 
 
 (defun home-page ()

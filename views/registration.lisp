@@ -61,11 +61,11 @@
       (setf (gethash 'password errors) "Invalid password.")
       (setf errors (make-hash-table)))
     (if logged-in
-        (hunchentoot:redirect came-from)
+        (redirect came-from)
         (render-standard-page (:title "Login")
           (:form :action "" :class "login-form form-stacked" :method "post"
                  (if (> (hash-table-count errors) 0)
-                     (cl-who:htm
+                     (htm
                       (:div :class "alert-message error"
                             (:p "Error detected on the page"))))
                  (:input :type "hidden" :name "came-from"

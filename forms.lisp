@@ -179,7 +179,7 @@ then-form; otherwise, the values returned by the else-form."
                               :class (if ,error "error")
                               :value ,value
                               ,@rest)))
-               (:span :class "help-inline" (cl-who:str ,error)))))
+               (:span :class "help-inline" (str ,error)))))
 
 
 (def-who-macro form-fragment
@@ -188,7 +188,7 @@ then-form; otherwise, the values returned by the else-form."
           :action ,action :method "post" :class ,class
           (if (and (eq ',form *current-form*)
                    (> (hash-table-count *form-errors*) 0))
-              (cl-who:htm
+              (htm
                (:div :class "alert-message error"
                      (:p "Error detected on the page"))))
           ,@(mapcar

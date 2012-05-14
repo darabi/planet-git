@@ -20,13 +20,13 @@
 
 
 (def-who-macro repository-item-fragment (name owner public)
-  `(cl-who:htm
+  `(htm
     (:div :class "well project"
-          (:a :href (cl-who:str (url-join ,owner ,name))
+          (:a :href (str (url-join ,owner ,name))
               (:h3 :class "name"
-                   (cl-who:str ,name)))
+                   (str ,name)))
           (unless ,public
-            (cl-who:htm (:span :class "label label-important" "Private"))))))
+            (htm (:span :class "label label-important" "Private"))))))
 
 
 (define-rest-handler (user-page :uri "^/(\\w+)/?$" :args (username)) ()
@@ -39,19 +39,19 @@
 	  (render-user-page
           (user
            :extra-header (when is-current-user
-                           (cl-who:htm (:a :class "btn primary pull-right"
+                           (htm (:a :class "btn primary pull-right"
                                            :href "/repository/new"
                                            "Add Repository"))))
 	    (let ((repositories (select-dao
 				 'repository (:= 'owner-id (slot-value user 'id)))))
-	      (hunchentoot:log-message* hunchentoot:*lisp-warnings-log-level* "Repositories ~a" repositories)
+	      (log-message *lisp-warnings-log-level* "Repositories ~a" repositories)
 	      (labels ((repository-fragment (repos)
 			 (let* ((repo (car repos)) (rest (cdr repos))
 				(visible (or (slot-value repo 'public)
 					     (equal (slot-value user 'username)
 						    (when (loginp) (slot-value (loginp) 'username)))))
 				(public (repository-public repo)))
-			   (hunchentoot:log-message* hunchentoot:*lisp-warnings-log-level* "Repository ~a" repo)
+			   (log-message* *lisp-warnings-log-level* "Repository ~a" repo)
 			   (when (and repo (or visible is-current-user))
 			     (repository-item-fragment (slot-value repo 'name)
 						       username
@@ -64,42 +64,42 @@
 (def-who-macro* email-item-fragment (user email)
   "this fragment renders a users email address as a list item with a
 delete button"
-  (cl-who:htm
+  (htm
    (:tr
     (:td
 	 (:a :class "close"
-         :href (cl-who:str
+         :href (str
                 (url-join (user-username user)
                           "settings"
                           "email"
                           (write-to-string (id email))
                           "delete"))
-	     (cl-who:str "x"))
-	 (cl-who:str (email-address email))))))
+	     (str "x"))
+	 (str (email-address email))))))
 
 (def-who-macro* key-item-fragment (user key)
   "this fragment renders a users email address as a list item with a
 delete button"
-  (cl-who:htm
+  (htm
    (:tr
     (:td
 	 (:a :class "close"
-         :href (cl-who:str
+         :href (str
                 (url-join (user-username user)
                           "settings"
                           "key"
                           (write-to-string (id key))
                           "delete"))
-	     (cl-who:str "x"))
-	 (cl-who:str (key-title key))))))
+	     (str "x"))
+	 (str (key-title key))))))
 
 
 (def-who-macro* user-settings-page (user emails keys)
-  (render-standard-page (:title (cl-who:str (user-username user))
+  (render-standard-page (:title (str (user-username user))
                          :page-header
                          ((:img :src (user-gravatar-url user :size 40))
                           (:h1 (:a :href (url-join (user-username user))
-                                   (cl-who:str (user-username user)))
+                                   (str (user-username user)))
                                (:small "Settings"))))
     (tabs
      ("Personal"
@@ -165,21 +165,21 @@ delete button"
           (setf *current-form*
                 (cond-forms
                  (:email-form
-                  (postmodern:insert-dao
+                  (insert-dao
                    (make-instance 'email
                                   :user-id (slot-value (loginp) 'id)
                                   :email email)))
                  (:login-form
-                  (let ((user (postmodern:get-dao 'login (slot-value user 'id))))
+                  (let ((user (get-dao 'login (slot-value user 'id))))
                     (setf (slot-value user 'fullname) fullname)
-                    (postmodern:update-dao user)))
+                    (update-dao user)))
                  (:key-form
-                  (postmodern:insert-dao
+                  (insert-dao
                    (key-parse key)))))
-          (let ((emails (postmodern:select-dao 'email (:= 'user-id (id user))))
-                (keys (postmodern:select-dao 'key (:= 'user-id (id user)))))
+          (let ((emails (select-dao 'email (:= 'user-id (id user))))
+                (keys (select-dao 'key (:= 'user-id (id user)))))
             (user-settings-page user emails keys)))
-        (setf (hunchentoot:return-code*) hunchentoot:+http-forbidden+))))
+        (setf (return-code*) +http-forbidden+))))
 
 
 (define-rest-handler (user-email-delete :uri "^/(\\w+)/settings/email/(\\w+)/delete/?$" :args (username email-id)) ()
@@ -195,14 +195,14 @@ delete button"
 		      (select-dao 'email
 					     (:and (:= 'id email-id) (:= 'user-id (id user)))))))
 	  (if email
-	      (postmodern:delete-dao email)
-	      (setf (hunchentoot:return-code*) hunchentoot:+http-not-found+))
-	  (hunchentoot:redirect (url-join (user-username user) "settings")))
-	(setf (hunchentoot:return-code*) hunchentoot:+http-forbidden+))))
+	      (delete-dao email)
+	      (setf (return-code*) +http-not-found+))
+	  (redirect (url-join (user-username user) "settings")))
+	(setf (return-code*) +http-forbidden+))))
 
 (define-rest-handler (user-key-delete :uri "^/(\\w+)/settings/key/(\\w+)/delete/?$" :args (username key-id)) ()
   (let*
-      ((user (car (postmodern:select-dao 'login (:= 'username username))))
+      ((user (car (select-dao 'login (:= 'username username))))
        (is-current-user (when user
 			  (equal
 			   (user-username user)
@@ -210,13 +210,13 @@ delete button"
 			     (user-username (loginp)))))))
     (if is-current-user
 	(let ((key (car
-		      (postmodern:select-dao 'key
+		      (select-dao 'key
 					     (:and (:= 'id key-id) (:= 'user-id (id user)))))))
 	  (if key
-	      (postmodern:delete-dao key)
-	      (setf (hunchentoot:return-code*) hunchentoot:+http-not-found+))
-	  (hunchentoot:redirect (url-join (user-username user) "settings")))
-	(setf (hunchentoot:return-code*) hunchentoot:+http-forbidden+))))
+	      (delete-dao key)
+	      (setf (return-code*) +http-not-found+))
+	  (redirect (url-join (user-username user) "settings")))
+	(setf (return-code*) +http-forbidden+))))
 
 
 (define-rest-handler (add-ssh-key

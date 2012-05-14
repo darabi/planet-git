@@ -41,7 +41,7 @@
     ()
   (let ((key-id (parse-integer key-id)))
     (if
-     (let ((owner-key (postmodern:query (:select '*
+     (let ((owner-key (query (:select '*
                        :from 'key
                        :inner-join 'login :on (:= 'key.user-id 'login.id)
                        :inner-join 'repository :on (:= 'login.id 'repository.owner-id)
@@ -50,12 +50,12 @@
                                     (:= 'login.username username))))))
        owner-key)
 
-     (setf (hunchentoot:return-code*) hunchentoot:+http-no-content+)
-     (setf (hunchentoot:return-code*) hunchentoot:+http-forbidden+)))
+     (setf (return-code*) +http-no-content+)
+     (setf (return-code*) +http-forbidden+)))
   "") ;; return an empty string for the content
 
 
-(hunchentoot:define-easy-handler
+(define-easy-handler
     (new-repository-page :uri "/repository/new")
     ((name :parameter-type 'string)
      (public :parameter-type 'boolean))
@@ -69,7 +69,7 @@
       (render-standard-page (:title "New Repository")
 	(:form :action "" :method "post"
 	       (if (> (hash-table-count errors) 0)
-		   (cl-who:htm
+		   (htm
 		    (:div :class "alert-message error"
 			  (:p "Error detected on the page"))))
 	       (field-fragment "name" "Name:" "text"
@@ -96,20 +96,20 @@
        (is-current-user (when user (equal (slot-value user 'username)
 					  (when (loginp) (slot-value (loginp) 'username))))))
     (if (and visible user repository)
-	(cl-git:with-git-repository ((repository-real-path repository))
-	  (let* ((branches (cl-git:git-reference-listall))
+	(with-git-repository ((repository-real-path repository))
+	  (let* ((branches (git-reference-listall))
 		 (branch (selected-branch repository branches branch)))
 	    (render-user-page (user :title
-				   (cl-who:htm (:a :href (url-join (slot-value user 'username))
-						   (cl-who:str (user-username user)))
-					       (:span (cl-who:str "/"))
-					       (cl-who:str (repository-name repository)))
+				   (htm (:a :href (url-join (slot-value user 'username))
+						   (str (user-username user)))
+					       (:span (str "/"))
+					       (str (repository-name repository)))
                    :subtitle "")
 	      (cond
 		(branch
-		 (cl-who:htm
+		 (htm
 		  (:script :type "text/javascript"
-			   (cl-who:str
+			   (str
 			    (ps:ps
 			      (defun select-branch (branch)
 				(setf (ps:getprop window 'location 'href)
@@ -122,34 +122,34 @@
 							  (ps:@ this options
 								(ps:@ this selected-index) value)))
 				 (mapcar #'(lambda (x)
-					     (cl-who:htm
+					     (htm
 					      (:option
 					       :value (remove-ref-path x)
 					       :selected (when (equal x branch) "true")
-					       (cl-who:str (remove-ref-path x)))))
-					 (cl-git:git-reference-listall))))
+					       (str (remove-ref-path x)))))
+					 (git-reference-listall))))
 		  (:ol :class "commit-list"
 		       (let ((count 0))
-			 (cl-git:with-git-revisions (commit :head branch)
+			 (with-git-revisions (commit :head branch)
 			   (setf count (+ count 1))
 			   (when (> count 10) (return))
-			   (cl-who:htm
+			   (htm
 			    (:li
-			     (let* ((author (cl-git:git-commit-author commit))
+			     (let* ((author (git-commit-author commit))
 				    (name (first author))
 				    (email (second author))
 				    (timestamp (third author)))
-			       (cl-who:htm
+			       (htm
 				(:img :src (gravatar-url email :size 40))
-				(:p (cl-who:str (cl-git:git-commit-message commit)))
-				(:span :class "author" (cl-who:str name))
+				(:p (str (git-commit-message commit)))
+				(:span :class "author" (str name))
 				(:span :class "date"
-				       (cl-who:str
+				       (str
                         (local-time:format-timestring nil timestamp :format
                                                       '(:long-month " " :day ", " :year))))))
 			     )))))))
 		((and (eq branch nil) is-current-user)
-		 (cl-who:htm
+		 (htm
 		  (:div :class "well"
 			(:h2 "Welcome to your new repository.")
             (:p "First things first, if you haven't already done so,
@@ -161,7 +161,7 @@ git config --global user.email \"~A\"" (user-fullname user) (user-primary-email 
 git remote add origin ~A:~A/~A
 git push origin master" *git-ssh-host* (user-username user) (repository-name repository)))))))
 		((eq branch nil)
-		 (cl-who:htm
+		 (htm
 		  (:div :class "well"
 			(:h2 "Under Construction."))
 		  ))

@@ -25,7 +25,7 @@
     (concatenate 'string "Error, " fieldname " is required")))
 
 (defun validate-username (fieldname)
-  (when (car (list (cl-ppcre:scan "[^a-zA-Z]" (parameter fieldname))))
+  (when (car (list (scan "[^a-zA-Z]" (parameter fieldname))))
     (concatenate 'string "Error, " fieldname " can only contain alpha characters.")))
 
 (defun validate-username-exists (fieldname)
@@ -43,11 +43,11 @@
     (concatenate 'string "Error, This " fieldname " is already taken.")))
 
 (defun validate-email (fieldname)
-  (unless (cl-ppcre:scan "^[^@]+@[^@]+[.][^@]+$" (parameter fieldname))
+  (unless (scan "^[^@]+@[^@]+[.][^@]+$" (parameter fieldname))
     (concatenate 'string "Error, " fieldname " is not a valid email address.")))
 
 (defun validate-key (fieldname)
-  (unless (cl-ppcre:scan "^\\S*\\s+\\S*\\s+\\S*$" (hunchentoot:parameter fieldname))
+  (unless (scan "^\\S*\\s+\\S*\\s+\\S*$" (parameter fieldname))
     (concatenate 'string "Error, " fieldname " is not a valid ssh-key.")))
 
 (defun validate-password (fieldname)

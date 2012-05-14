@@ -74,7 +74,7 @@ is the corresponding value."
   #+:sbcl (declare (sb-ext:muffle-conditions warning))
   (let* ((index-value-list
           (loop for (full-name . value) in parameters
-                for index = (cl-ppcre:register-groups-bind (name index-string)
+                for index = (register-groups-bind (name index-string)
                                 ("^(.*)\\[(\\d+)\\]$" full-name)
                               (when (string= name parameter-name)
                                 (parse-integer index-string)))
@@ -97,7 +97,7 @@ corresponding value is associated with the key FOO \(converted to
 KEY-TYPE)."
   (let ((hash-table (make-hash-table :test test-function)))
     (loop for (full-name . value) in parameters
-          for key = (cl-ppcre:register-groups-bind (name key-string)
+          for key = (register-groups-bind (name key-string)
                         ("^(.*){([^{}]+)}$" full-name)
                       (when (string= name parameter-name)
                         (convert-parameter key-string key-type)))
