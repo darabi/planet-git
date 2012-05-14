@@ -51,7 +51,7 @@
 					     (equal (slot-value user 'username)
 						    (when (loginp) (slot-value (loginp) 'username)))))
 				(public (repository-public repo)))
-			   (log-message* *lisp-warnings-log-level* "Repository ~a" repo)
+			   (log-message *lisp-warnings-log-level* "Repository ~a" repo)
 			   (when (and repo (or visible is-current-user))
 			     (repository-item-fragment (slot-value repo 'name)
 						       username

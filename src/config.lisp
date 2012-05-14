@@ -19,7 +19,7 @@
 ;; The configuration code was taken from elephant, the lisp object
 ;; database
 
-(in-package :planet-git)
+(in-package #:planet-git)
 
 (defparameter *swank-server* nil
   "Bound to the running swank server, if *SWANK-ENABLED* is true.")

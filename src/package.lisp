@@ -17,7 +17,7 @@
 ;;;; package.lisp
 (in-package :cl-user)
 
-(defpackage #:planet-git
+(defpackage :planet-git
   (:use #:cl
         #:hunchentoot
         #:postmodern)
